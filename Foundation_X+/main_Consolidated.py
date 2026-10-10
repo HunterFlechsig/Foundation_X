@@ -3335,12 +3335,12 @@ def main(args):
             train_loader_loc_RSNApneumonia, test_loader_loc_RSNApneumonia, dataset_val_loc_RSNApneumonia, sampler_train_RSNApneumonia, \
             train_loader_loc_SiimACR, test_loader_loc_SiimACR, dataset_val_loc_SiimACR, sampler_train_SiimACR, \
             train_loader_seg_ChestXDet, test_loader_seg_ChestXDet, train_loader_seg_SIIM, test_loader_seg_SIIM, train_loader_seg_CANDIDptx, test_loader_seg_CANDIDptx = dataloader_return(args)
-            base_ds_TBX11k = get_coco_api_from_dataset(dataset_val_loc_TBX11k)
-            base_ds_Node21 = get_coco_api_from_dataset(dataset_val_loc_Node21)
-            base_ds_ChestXDet = get_coco_api_from_dataset(dataset_val_loc_ChestXDet)
-            base_ds_CANDIDptx = get_coco_api_from_dataset(dataset_val_loc_CANDIDptx)
-            base_ds_RSNApneumonia = get_coco_api_from_dataset(dataset_val_loc_RSNApneumonia)
-            base_ds_SiimACR = get_coco_api_from_dataset(dataset_val_loc_SiimACR)
+            base_ds_TBX11k = get_coco_api_from_dataset(dataset_val_loc_TBX11k) if dataset_val_loc_TBX11k is not None else None
+            base_ds_Node21 = get_coco_api_from_dataset(dataset_val_loc_Node21) if dataset_val_loc_Node21 is not None else None
+            base_ds_ChestXDet = get_coco_api_from_dataset(dataset_val_loc_ChestXDet) if dataset_val_loc_ChestXDet is not None else None
+            base_ds_CANDIDptx = get_coco_api_from_dataset(dataset_val_loc_CANDIDptx) if dataset_val_loc_CANDIDptx is not None else None
+            base_ds_RSNApneumonia = get_coco_api_from_dataset(dataset_val_loc_RSNApneumonia) if dataset_val_loc_RSNApneumonia is not None else None
+            base_ds_SiimACR = get_coco_api_from_dataset(dataset_val_loc_SiimACR) if dataset_val_loc_SiimACR is not None else None
             del dataset_val_loc_TBX11k, dataset_val_loc_Node21, dataset_val_loc_ChestXDet
             # for name, param in model.named_parameters(): ### WHY!!!!!! -- 26th June 2024!!
             #     if ('decoder.1' in name) or ('decoder.2' in name) or ('segmentation' in name): ## Only Localization Encoder

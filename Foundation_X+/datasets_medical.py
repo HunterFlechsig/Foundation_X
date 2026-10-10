@@ -4112,222 +4112,274 @@ def dataloader_return(args):
     
 
     if args.taskcomponent in ['foundation_x3_pretraining', 'foundation_x4_pretraining', 'foundation_x5_pretraining']:       
+        # foundation_x5 loads only the task tokens named in cyclictask.
+        # foundation_x3 and foundation_x4 still load every dataset.
+        _selected_tasks = None
+        if args.taskcomponent == 'foundation_x5_pretraining':
+            _selected_tasks = {token.strip().lower() for token in args.cyclictask.split('_') if token.strip()}
+
+        def _use_task(token):
+            if _selected_tasks is None:
+                return True
+            keep = token.lower() in _selected_tasks
+            if keep:
+                print("[Data] Loading", token)
+            return keep
+
+        train_loader_cls_CheXpert = test_loader_cls_CheXpert = None
+        train_loader_cls_NIHChestXray14 = test_loader_cls_NIHChestXray14 = None
+        train_loader_cls_VinDRCXR = test_loader_cls_VinDRCXR = None
+        train_loader_cls_NIHShenzhen = test_loader_cls_NIHShenzhen = None
+        train_loader_cls_MIMICII = test_loader_cls_MIMICII = None
+        train_loader_cls_TBX11k = test_loader_cls_TBX11k = None
+        train_loader_cls_NODE21 = test_loader_cls_NODE21 = None
+        train_loader_cls_ChestXDet = test_loader_cls_ChestXDet = None
+        train_loader_cls_RSNApneumonia = test_loader_cls_RSNApneumonia = None
+        train_loader_cls_SIIMACRptx = test_loader_cls_SIIMACRptx = None
+        train_loader_cls_CANDIDptx = test_loader_cls_CANDIDptx = None
+        train_loader_loc_TBX11k = test_loader_loc_TBX11k = dataset_val_loc_TBX11k = sampler_train_TBX11k = None
+        train_loader_loc_Node21 = test_loader_loc_Node21 = dataset_val_loc_Node21 = sampler_train_Node21 = None
+        train_loader_loc_CANDIDptx = test_loader_loc_CANDIDptx = dataset_val_loc_CANDIDptx = sampler_train_CANDIDptx = None
+        train_loader_loc_ChestXDet = test_loader_loc_ChestXDet = dataset_val_loc_ChestXDet = sampler_train_ChestXDet = None
+        train_loader_loc_RSNApneumonia = test_loader_loc_RSNApneumonia = dataset_val_loc_RSNApneumonia = sampler_train_RSNApneumonia = None
+        train_loader_loc_SiimACR = test_loader_loc_SiimACR = dataset_val_loc_SiimACR = sampler_train_SiimACR = None
+        train_loader_seg_ChestXDet = test_loader_seg_ChestXDet = None
+        train_loader_seg_SIIM = test_loader_seg_SIIM = None
+        train_loader_seg_CANDIDptx = test_loader_seg_CANDIDptx = None
+
         ## Dataloader for Classification -------------------------------------------------------------
-        train_list = DATASETS_CONFIG["cls_nih_trainList"]
-        val_list = DATASETS_CONFIG["cls_nih_valList"]
-        test_list = DATASETS_CONFIG["cls_nih_testList"]
-        if args.serverC == 'DFS':
-            data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
-        elif args.serverC == "SOL":
-            data_dir = DATASETS_CONFIG["cls_nih_root"]
-        dataset_train = ChestXray14Dataset(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
-        # dataset_val = ChestXray14Dataset(images_path=data_dir, file_path=val_list, augment=build_transform_classification(normalize="chestx-ray", mode="valid"))
-        dataset_test = ChestXray14Dataset(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_NIHChestXray14 = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        # val_loader_cls_NIHChestXray14 = DataLoader(dataset=dataset_val, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
-        test_loader_cls_NIHChestXray14 = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("nihchestxray14CLS"):
+            train_list = DATASETS_CONFIG["cls_nih_trainList"]
+            val_list = DATASETS_CONFIG["cls_nih_valList"]
+            test_list = DATASETS_CONFIG["cls_nih_testList"]
+            if args.serverC == 'DFS':
+                data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
+            elif args.serverC == "SOL":
+                data_dir = DATASETS_CONFIG["cls_nih_root"]
+            dataset_train = ChestXray14Dataset(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
+            # dataset_val = ChestXray14Dataset(images_path=data_dir, file_path=val_list, augment=build_transform_classification(normalize="chestx-ray", mode="valid"))
+            dataset_test = ChestXray14Dataset(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_NIHChestXray14 = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            # val_loader_cls_NIHChestXray14 = DataLoader(dataset=dataset_val, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+            test_loader_cls_NIHChestXray14 = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        train_list = DATASETS_CONFIG["cls_chexpert_trainList"]
-        val_list = DATASETS_CONFIG["cls_chexpert_valList"]
-        test_list = DATASETS_CONFIG["cls_chexpert_testList"]
-        if args.serverC == 'DFS':
-            # data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
-            check = 0
-        elif args.serverC == "SOL":
-            # data_dir = "/data/jliang12/mhossei2/Dataset/" ## CheXpert-v1.0
-            data_dir = DATASETS_CONFIG["cls_chexpert_root"]
-        dataset_train = CheXpert(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100, mode='train')
-        dataset_test = CheXpert(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"), mode='test')
-        train_loader_cls_CheXpert = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_CheXpert = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("chexpertCLS"):
+            train_list = DATASETS_CONFIG["cls_chexpert_trainList"]
+            val_list = DATASETS_CONFIG["cls_chexpert_valList"]
+            test_list = DATASETS_CONFIG["cls_chexpert_testList"]
+            if args.serverC == 'DFS':
+                # data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
+                check = 0
+            elif args.serverC == "SOL":
+                # data_dir = "/data/jliang12/mhossei2/Dataset/" ## CheXpert-v1.0
+                data_dir = DATASETS_CONFIG["cls_chexpert_root"]
+            dataset_train = CheXpert(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100, mode='train')
+            dataset_test = CheXpert(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"), mode='test')
+            train_loader_cls_CheXpert = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_CheXpert = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        train_list = DATASETS_CONFIG["cls_vindrcxr_trainList"]
-        val_list = DATASETS_CONFIG["cls_vindrcxr_valList"]
-        test_list = DATASETS_CONFIG["cls_vindrcxr_testList"]
-        if args.serverC == 'DFS':
-            data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
-        elif args.serverC == "SOL":
-            data_dir = DATASETS_CONFIG["cls_vindrcxr_root"]
-        dataset_train = VinDrCXR(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
-        dataset_test = VinDrCXR(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_VinDRCXR = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_VinDRCXR = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("vindrcxrCLS"):
+            train_list = DATASETS_CONFIG["cls_vindrcxr_trainList"]
+            val_list = DATASETS_CONFIG["cls_vindrcxr_valList"]
+            test_list = DATASETS_CONFIG["cls_vindrcxr_testList"]
+            if args.serverC == 'DFS':
+                data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
+            elif args.serverC == "SOL":
+                data_dir = DATASETS_CONFIG["cls_vindrcxr_root"]
+            dataset_train = VinDrCXR(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
+            dataset_test = VinDrCXR(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_VinDRCXR = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_VinDRCXR = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        train_list = DATASETS_CONFIG["cls_shenzencxr_trainList"]
-        val_list = DATASETS_CONFIG["cls_shenzencxr_valList"]
-        test_list = DATASETS_CONFIG["cls_shenzencxr_testList"]
-        if args.serverC == 'DFS':
-            data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
-        elif args.serverC == "SOL":
-            # data_dir = "/data/jliang12/mhossei2/Dataset/ShenzhenHospitalXray/ChinaSet_AllFiles/CXR_png/"
-            data_dir = DATASETS_CONFIG["cls_shenzencxr_root"]
-        dataset_train = ShenzhenCXR(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
-        dataset_test = ShenzhenCXR(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_NIHShenzhen = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_NIHShenzhen = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("nihshenzenCLS"):
+            train_list = DATASETS_CONFIG["cls_shenzencxr_trainList"]
+            val_list = DATASETS_CONFIG["cls_shenzencxr_valList"]
+            test_list = DATASETS_CONFIG["cls_shenzencxr_testList"]
+            if args.serverC == 'DFS':
+                data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
+            elif args.serverC == "SOL":
+                # data_dir = "/data/jliang12/mhossei2/Dataset/ShenzhenHospitalXray/ChinaSet_AllFiles/CXR_png/"
+                data_dir = DATASETS_CONFIG["cls_shenzencxr_root"]
+            dataset_train = ShenzhenCXR(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
+            dataset_test = ShenzhenCXR(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_NIHShenzhen = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_NIHShenzhen = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        train_list = DATASETS_CONFIG["cls_mimiccxr_trainList"]
-        val_list = DATASETS_CONFIG["cls_mimiccxr_valList"]
-        test_list = DATASETS_CONFIG["cls_mimiccxr_testList"]
-        if args.serverC == 'DFS':
-            data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
-        elif args.serverC == "SOL":
-            # data_dir = "/data/jliang12/jpang12/dataset/MIMIC_jpeg/physionet.org/files/mimic-cxr-jpg/2.0.0/"
-            data_dir = DATASETS_CONFIG["cls_mimiccxr_root"]
-        dataset_train = MIMIC(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
-        dataset_test = MIMIC(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_MIMICII = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_MIMICII = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("mimic2CLS"):
+            train_list = DATASETS_CONFIG["cls_mimiccxr_trainList"]
+            val_list = DATASETS_CONFIG["cls_mimiccxr_valList"]
+            test_list = DATASETS_CONFIG["cls_mimiccxr_testList"]
+            if args.serverC == 'DFS':
+                data_dir = "/mnt/dfs/nuislam/Data/ChestXRay14_images/" #"/mnt/dfs/nuislam/Data/ChestXRay14_images/" ## "/data/jliang12/jpang12/dataset/nih_xray14/images/images/"
+            elif args.serverC == "SOL":
+                # data_dir = "/data/jliang12/jpang12/dataset/MIMIC_jpeg/physionet.org/files/mimic-cxr-jpg/2.0.0/"
+                data_dir = DATASETS_CONFIG["cls_mimiccxr_root"]
+            dataset_train = MIMIC(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
+            dataset_test = MIMIC(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_MIMICII = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_MIMICII = DataLoader(dataset=dataset_test, batch_size=args.batch_size//2, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
 
-        ## -- TBX11K Dataset -- ##
-        train_list = DATASETS_CONFIG["cls_tbx11k_trainList"]
-        test_list = DATASETS_CONFIG["cls_tbx11k_testList"]
-        if args.serverC == 'DFS':
-            data_dir = "/mnt/dfs/jpang12/datasets/tbx11k/"
-        elif args.serverC == "SOL":
-            data_dir = DATASETS_CONFIG["cls_tbx11k_root"]
-        dataset_train = TBX11KDataset(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
-        dataset_test = TBX11KDataset(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_TBX11k = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_TBX11k = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("tbx11kCLS"):
+            ## -- TBX11K Dataset -- ##
+            train_list = DATASETS_CONFIG["cls_tbx11k_trainList"]
+            test_list = DATASETS_CONFIG["cls_tbx11k_testList"]
+            if args.serverC == 'DFS':
+                data_dir = "/mnt/dfs/jpang12/datasets/tbx11k/"
+            elif args.serverC == "SOL":
+                data_dir = DATASETS_CONFIG["cls_tbx11k_root"]
+            dataset_train = TBX11KDataset(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
+            dataset_test = TBX11KDataset(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_TBX11k = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_TBX11k = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        ## -- NODE21 Dataset -- ##
-        train_list = DATASETS_CONFIG["cls_node21_trainList"]
-        test_list = DATASETS_CONFIG["cls_node21_testList"]
-        if args.serverC == 'DFS':
-            data_dir = "/mnt/dfs/nuislam/Data/NODE21_ann/"
-        elif args.serverC == "SOL":
-            # data_dir = "/scratch/jliang12/data/NODE21/cxr_images/proccessed_data/"
-            data_dir = DATASETS_CONFIG["cls_node21_root"]
-        dataset_train = NODE21(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
-        dataset_test = NODE21(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_NODE21 = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_NODE21 = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("node21CLS"):
+            ## -- NODE21 Dataset -- ##
+            train_list = DATASETS_CONFIG["cls_node21_trainList"]
+            test_list = DATASETS_CONFIG["cls_node21_testList"]
+            if args.serverC == 'DFS':
+                data_dir = "/mnt/dfs/nuislam/Data/NODE21_ann/"
+            elif args.serverC == "SOL":
+                # data_dir = "/scratch/jliang12/data/NODE21/cxr_images/proccessed_data/"
+                data_dir = DATASETS_CONFIG["cls_node21_root"]
+            dataset_train = NODE21(images_path=data_dir, file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), annotation_percent=100)
+            dataset_test = NODE21(images_path=data_dir, file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_NODE21 = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_NODE21 = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        ## -- ChestX-Det Dataset -- ##
-        if args.serverC == 'DFS':
-            data_dir = "/mnt/dfs/nuislam/Data/ChestX-Det/"
-            train_list = '/mnt/dfs/nuislam/Data/ChestX-Det/ChestX_det_train_NAD_v2.json'
-            test_list = '/mnt/dfs/nuislam/Data/ChestX-Det/ChestX_det_test_NAD_v2.json'
-        elif args.serverC == "SOL":
-            data_dir = DATASETS_CONFIG["cls_chestxdet_root"]
-            train_list = DATASETS_CONFIG["cls_chestxdet_trainList"]
-            test_list = DATASETS_CONFIG["cls_chestxdet_testList"]
-        dataset_train = ChestXDet_cls(images_path=data_dir, file_path="train", augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), anno_percent=100)
-        dataset_test = ChestXDet_cls(images_path=data_dir, file_path="test", augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_ChestXDet = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_ChestXDet = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("chestxdetCLS"):
+            ## -- ChestX-Det Dataset -- ##
+            if args.serverC == 'DFS':
+                data_dir = "/mnt/dfs/nuislam/Data/ChestX-Det/"
+                train_list = '/mnt/dfs/nuislam/Data/ChestX-Det/ChestX_det_train_NAD_v2.json'
+                test_list = '/mnt/dfs/nuislam/Data/ChestX-Det/ChestX_det_test_NAD_v2.json'
+            elif args.serverC == "SOL":
+                data_dir = DATASETS_CONFIG["cls_chestxdet_root"]
+                train_list = DATASETS_CONFIG["cls_chestxdet_trainList"]
+                test_list = DATASETS_CONFIG["cls_chestxdet_testList"]
+            dataset_train = ChestXDet_cls(images_path=data_dir, file_path="train", augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"), anno_percent=100)
+            dataset_test = ChestXDet_cls(images_path=data_dir, file_path="test", augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_ChestXDet = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_ChestXDet = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        ## -- RSNAPneumonia Dataset -- ##
-        train_list = DATASETS_CONFIG["cls_rsnapneumonia_trainList"]
-        valid_list = DATASETS_CONFIG["cls_rsnapneumonia_valList"]
-        test_list = DATASETS_CONFIG["cls_rsnapneumonia_testList"]
-        dataset_train = RSNAPneumonia(images_path=DATASETS_CONFIG["cls_rsnapneumonia_root"], file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"))
-        dataset_test = RSNAPneumonia(images_path=DATASETS_CONFIG["cls_rsnapneumonia_root"], file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_RSNApneumonia = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_RSNApneumonia = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("rsnapneumoniaCLS"):
+            ## -- RSNAPneumonia Dataset -- ##
+            train_list = DATASETS_CONFIG["cls_rsnapneumonia_trainList"]
+            valid_list = DATASETS_CONFIG["cls_rsnapneumonia_valList"]
+            test_list = DATASETS_CONFIG["cls_rsnapneumonia_testList"]
+            dataset_train = RSNAPneumonia(images_path=DATASETS_CONFIG["cls_rsnapneumonia_root"], file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"))
+            dataset_test = RSNAPneumonia(images_path=DATASETS_CONFIG["cls_rsnapneumonia_root"], file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_RSNApneumonia = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_RSNApneumonia = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        ## -- SIIMPTX Dataset -- ##
-        train_list = DATASETS_CONFIG["cls_siimacr_trainList"]
-        valid_list = DATASETS_CONFIG["cls_siimacr_valList"]
-        test_list = DATASETS_CONFIG["cls_siimacr_testList"]
-        dataset_train = SIIMPTX(images_path=DATASETS_CONFIG["cls_siimacr_root"], file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"))
-        dataset_test = SIIMPTX(images_path=DATASETS_CONFIG["cls_siimacr_root"], file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_SIIMACRptx = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_SIIMACRptx = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("siimacrCLS"):
+            ## -- SIIMPTX Dataset -- ##
+            train_list = DATASETS_CONFIG["cls_siimacr_trainList"]
+            valid_list = DATASETS_CONFIG["cls_siimacr_valList"]
+            test_list = DATASETS_CONFIG["cls_siimacr_testList"]
+            dataset_train = SIIMPTX(images_path=DATASETS_CONFIG["cls_siimacr_root"], file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"))
+            dataset_test = SIIMPTX(images_path=DATASETS_CONFIG["cls_siimacr_root"], file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_SIIMACRptx = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_SIIMACRptx = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-        ## -- CANDID-PTX Dataset -- ##
-        train_list = DATASETS_CONFIG["cls_candidptx_trainList"]
-        valid_list = DATASETS_CONFIG["cls_candidptx_valList"]
-        test_list = DATASETS_CONFIG["cls_candidptx_testList"]
-        dataset_train = CANDIDPTX(images_path=DATASETS_CONFIG["cls_candidptx_root"], file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"))
-        dataset_test = CANDIDPTX(images_path=DATASETS_CONFIG["cls_candidptx_root"], file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
-        train_loader_cls_CANDIDptx = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
-        test_loader_cls_CANDIDptx = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        if _use_task("candidptxCLS"):
+            ## -- CANDID-PTX Dataset -- ##
+            train_list = DATASETS_CONFIG["cls_candidptx_trainList"]
+            valid_list = DATASETS_CONFIG["cls_candidptx_valList"]
+            test_list = DATASETS_CONFIG["cls_candidptx_testList"]
+            dataset_train = CANDIDPTX(images_path=DATASETS_CONFIG["cls_candidptx_root"], file_path=train_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="train"))
+            dataset_test = CANDIDPTX(images_path=DATASETS_CONFIG["cls_candidptx_root"], file_path=test_list, augment=build_transform_classification(normalize="chestx-ray", crop_size=args.imgsize, mode="test2"))
+            train_loader_cls_CANDIDptx = DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+            test_loader_cls_CANDIDptx = DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
 
 
         ## Dataloader for Localization -------------------------------------------------------------
-        ## -- TBX11K Dataset -- ##
-        dataset_train_loc_TBX11k = build_dataset(image_set=DATASETS_CONFIG["loc_tbx11k_trainTag"], args=args) ## TBX11K Dataset - Training A set # tbx11k_catagnostic_train | tbx11k_catagnostic_train_A | tbx11k_catagnostic_train_B
-        dataset_val_loc_TBX11k = build_dataset(image_set=DATASETS_CONFIG["loc_tbx11k_testTag"], args=args)
-        if args.distributed:
-            sampler_train_TBX11k = DistributedSampler(dataset_train_loc_TBX11k, shuffle=True)
-            sampler_val = DistributedSampler(dataset_val_loc_TBX11k, shuffle=False)
-            # sampler_test = DistributedSampler(dataset_test, shuffle=False) # added by Nahid
-        else:
-            sampler_train_TBX11k = torch.utils.data.RandomSampler(dataset_train_loc_TBX11k)
-            sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_TBX11k)
-            # sampler_test = torch.utils.data.SequentialSampler(dataset_test) # added by Nahid
-        batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_TBX11k, args.batch_size, drop_last=True)
-        train_loader_loc_TBX11k = DataLoader(dataset_train_loc_TBX11k, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
-        test_loader_loc_TBX11k = DataLoader(dataset_val_loc_TBX11k, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+        if _use_task("tbx11kLOC"):
+            ## -- TBX11K Dataset -- ##
+            dataset_train_loc_TBX11k = build_dataset(image_set=DATASETS_CONFIG["loc_tbx11k_trainTag"], args=args) ## TBX11K Dataset - Training A set # tbx11k_catagnostic_train | tbx11k_catagnostic_train_A | tbx11k_catagnostic_train_B
+            dataset_val_loc_TBX11k = build_dataset(image_set=DATASETS_CONFIG["loc_tbx11k_testTag"], args=args)
+            if args.distributed:
+                sampler_train_TBX11k = DistributedSampler(dataset_train_loc_TBX11k, shuffle=True)
+                sampler_val = DistributedSampler(dataset_val_loc_TBX11k, shuffle=False)
+                # sampler_test = DistributedSampler(dataset_test, shuffle=False) # added by Nahid
+            else:
+                sampler_train_TBX11k = torch.utils.data.RandomSampler(dataset_train_loc_TBX11k)
+                sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_TBX11k)
+                # sampler_test = torch.utils.data.SequentialSampler(dataset_test) # added by Nahid
+            batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_TBX11k, args.batch_size, drop_last=True)
+            train_loader_loc_TBX11k = DataLoader(dataset_train_loc_TBX11k, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+            test_loader_loc_TBX11k = DataLoader(dataset_val_loc_TBX11k, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
         
-        ## -- NODE21 Dataset -- ##
-        dataset_train_loc_Node21 = build_dataset(image_set=DATASETS_CONFIG["loc_node21_trainTag"], args=args) ## NODE21 Dataset - Training A set # node21_noduleDataset_train | node21_noduleDataset_train_A | node21_noduleDataset_train_B
-        dataset_val_loc_Node21 = build_dataset(image_set=DATASETS_CONFIG["loc_node21_testTag"], args=args)
-        if args.distributed:
-            sampler_train_Node21 = DistributedSampler(dataset_train_loc_Node21, shuffle=True)
-            sampler_val = DistributedSampler(dataset_val_loc_Node21, shuffle=False)
-        else:
-            sampler_train_Node21 = torch.utils.data.RandomSampler(dataset_train_loc_Node21)
-            sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_Node21)
-        batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_Node21, args.batch_size, drop_last=True)
-        train_loader_loc_Node21 = DataLoader(dataset_train_loc_Node21, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers)
-        test_loader_loc_Node21 = DataLoader(dataset_val_loc_Node21, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
+        if _use_task("node21LOC"):
+            ## -- NODE21 Dataset -- ##
+            dataset_train_loc_Node21 = build_dataset(image_set=DATASETS_CONFIG["loc_node21_trainTag"], args=args) ## NODE21 Dataset - Training A set # node21_noduleDataset_train | node21_noduleDataset_train_A | node21_noduleDataset_train_B
+            dataset_val_loc_Node21 = build_dataset(image_set=DATASETS_CONFIG["loc_node21_testTag"], args=args)
+            if args.distributed:
+                sampler_train_Node21 = DistributedSampler(dataset_train_loc_Node21, shuffle=True)
+                sampler_val = DistributedSampler(dataset_val_loc_Node21, shuffle=False)
+            else:
+                sampler_train_Node21 = torch.utils.data.RandomSampler(dataset_train_loc_Node21)
+                sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_Node21)
+            batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_Node21, args.batch_size, drop_last=True)
+            train_loader_loc_Node21 = DataLoader(dataset_train_loc_Node21, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers)
+            test_loader_loc_Node21 = DataLoader(dataset_val_loc_Node21, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
 
-        ## -- CANDID-PTX Dataset -- ##
-        dataset_train_loc_CANDIDptx = build_dataset(image_set=DATASETS_CONFIG["loc_candidptx_trainTag"], args=args) ## CANDID-PTX Dataset - Training A set # candidptx_pneumothorax_train_full | candidptx_pneumothorax_train_A | candidptx_pneumothorax_train_B
-        dataset_val_loc_CANDIDptx = build_dataset(image_set=DATASETS_CONFIG["loc_candidptx_testTag"], args=args) # candidptx_pneumothorax_val | candidptx_pneumothorax_test
-        if args.distributed:
-            sampler_train_CANDIDptx = DistributedSampler(dataset_train_loc_CANDIDptx, shuffle=True)
-            sampler_val = DistributedSampler(dataset_val_loc_CANDIDptx, shuffle=False)
-        else:
-            sampler_train_CANDIDptx = torch.utils.data.RandomSampler(dataset_train_loc_CANDIDptx)
-            sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_CANDIDptx)
-        batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_CANDIDptx, args.batch_size, drop_last=True)
-        train_loader_loc_CANDIDptx = DataLoader(dataset_train_loc_CANDIDptx, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
-        test_loader_loc_CANDIDptx = DataLoader(dataset_val_loc_CANDIDptx, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+        if _use_task("candidptxLOC"):
+            ## -- CANDID-PTX Dataset -- ##
+            dataset_train_loc_CANDIDptx = build_dataset(image_set=DATASETS_CONFIG["loc_candidptx_trainTag"], args=args) ## CANDID-PTX Dataset - Training A set # candidptx_pneumothorax_train_full | candidptx_pneumothorax_train_A | candidptx_pneumothorax_train_B
+            dataset_val_loc_CANDIDptx = build_dataset(image_set=DATASETS_CONFIG["loc_candidptx_testTag"], args=args) # candidptx_pneumothorax_val | candidptx_pneumothorax_test
+            if args.distributed:
+                sampler_train_CANDIDptx = DistributedSampler(dataset_train_loc_CANDIDptx, shuffle=True)
+                sampler_val = DistributedSampler(dataset_val_loc_CANDIDptx, shuffle=False)
+            else:
+                sampler_train_CANDIDptx = torch.utils.data.RandomSampler(dataset_train_loc_CANDIDptx)
+                sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_CANDIDptx)
+            batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_CANDIDptx, args.batch_size, drop_last=True)
+            train_loader_loc_CANDIDptx = DataLoader(dataset_train_loc_CANDIDptx, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+            test_loader_loc_CANDIDptx = DataLoader(dataset_val_loc_CANDIDptx, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
 
-        ## -- ChestX-Det Dataset -- ##
-        dataset_train_loc_ChestXDet = build_dataset(image_set=DATASETS_CONFIG["loc_chestxdet_trainTag"], args=args) ## ChestX-Det Dataset - Training A set # chestxdet_train | chestxdet_train_A | chestxdet_train_B
-        dataset_val_loc_ChestXDet = build_dataset(image_set=DATASETS_CONFIG["loc_chestxdet_testTag"], args=args)
-        if args.distributed:
-            sampler_train_ChestXDet = DistributedSampler(dataset_train_loc_ChestXDet, shuffle=True)
-            sampler_val = DistributedSampler(dataset_val_loc_ChestXDet, shuffle=False)
-        else:
-            sampler_train_ChestXDet = torch.utils.data.RandomSampler(dataset_train_loc_ChestXDet)
-            sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_ChestXDet)
-        batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_ChestXDet, args.batch_size, drop_last=True)
-        train_loader_loc_ChestXDet = DataLoader(dataset_train_loc_ChestXDet, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
-        test_loader_loc_ChestXDet = DataLoader(dataset_val_loc_ChestXDet, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+        if _use_task("chestxdetLOC"):
+            ## -- ChestX-Det Dataset -- ##
+            dataset_train_loc_ChestXDet = build_dataset(image_set=DATASETS_CONFIG["loc_chestxdet_trainTag"], args=args) ## ChestX-Det Dataset - Training A set # chestxdet_train | chestxdet_train_A | chestxdet_train_B
+            dataset_val_loc_ChestXDet = build_dataset(image_set=DATASETS_CONFIG["loc_chestxdet_testTag"], args=args)
+            if args.distributed:
+                sampler_train_ChestXDet = DistributedSampler(dataset_train_loc_ChestXDet, shuffle=True)
+                sampler_val = DistributedSampler(dataset_val_loc_ChestXDet, shuffle=False)
+            else:
+                sampler_train_ChestXDet = torch.utils.data.RandomSampler(dataset_train_loc_ChestXDet)
+                sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_ChestXDet)
+            batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_ChestXDet, args.batch_size, drop_last=True)
+            train_loader_loc_ChestXDet = DataLoader(dataset_train_loc_ChestXDet, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+            test_loader_loc_ChestXDet = DataLoader(dataset_val_loc_ChestXDet, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
 
-        ## -- RSNA Pneumonia Challenge Dataset -- ##
-        dataset_train_loc_RSNApneumonia = build_dataset(image_set=DATASETS_CONFIG["loc_rsnapneumonia_trainTag"], args=args) ## RSNApneumonia Dataset - Training A set # rsnaPneumoniaDetection_Train | rsnaPneumoniaDetection_Train_A | rsnaPneumoniaDetection_Train_B
-        dataset_val_loc_RSNApneumonia = build_dataset(image_set=DATASETS_CONFIG["loc_rsnapneumonia_testTag"], args=args)
-        if args.distributed:
-            sampler_train_RSNApneumonia = DistributedSampler(dataset_train_loc_RSNApneumonia, shuffle=True)
-            sampler_val = DistributedSampler(dataset_val_loc_RSNApneumonia, shuffle=False)
-        else:
-            sampler_train_RSNApneumonia = torch.utils.data.RandomSampler(dataset_train_loc_RSNApneumonia)
-            sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_RSNApneumonia)
-        batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_RSNApneumonia, args.batch_size, drop_last=True)
-        train_loader_loc_RSNApneumonia = DataLoader(dataset_train_loc_RSNApneumonia, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
-        test_loader_loc_RSNApneumonia = DataLoader(dataset_val_loc_RSNApneumonia, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+        if _use_task("rsnapneumoniaLOC"):
+            ## -- RSNA Pneumonia Challenge Dataset -- ##
+            dataset_train_loc_RSNApneumonia = build_dataset(image_set=DATASETS_CONFIG["loc_rsnapneumonia_trainTag"], args=args) ## RSNApneumonia Dataset - Training A set # rsnaPneumoniaDetection_Train | rsnaPneumoniaDetection_Train_A | rsnaPneumoniaDetection_Train_B
+            dataset_val_loc_RSNApneumonia = build_dataset(image_set=DATASETS_CONFIG["loc_rsnapneumonia_testTag"], args=args)
+            if args.distributed:
+                sampler_train_RSNApneumonia = DistributedSampler(dataset_train_loc_RSNApneumonia, shuffle=True)
+                sampler_val = DistributedSampler(dataset_val_loc_RSNApneumonia, shuffle=False)
+            else:
+                sampler_train_RSNApneumonia = torch.utils.data.RandomSampler(dataset_train_loc_RSNApneumonia)
+                sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_RSNApneumonia)
+            batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_RSNApneumonia, args.batch_size, drop_last=True)
+            train_loader_loc_RSNApneumonia = DataLoader(dataset_train_loc_RSNApneumonia, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+            test_loader_loc_RSNApneumonia = DataLoader(dataset_val_loc_RSNApneumonia, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
 
-        ## -- SIIM-ACR Dataset -- ##
-        dataset_train_loc_SiimACR = build_dataset(image_set=DATASETS_CONFIG["loc_siimacr_trainTag"], args=args) ## RSNApneumonia Dataset - Training A set # siimacr_train | siimacr_train_A | siimacr_train_B
-        dataset_val_loc_SiimACR = build_dataset(image_set=DATASETS_CONFIG["loc_siimacr_testTag"], args=args)
-        if args.distributed:
-            sampler_train_SiimACR = DistributedSampler(dataset_train_loc_SiimACR, shuffle=True)
-            sampler_val = DistributedSampler(dataset_val_loc_SiimACR, shuffle=False)
-        else:
-            sampler_train_SiimACR = torch.utils.data.RandomSampler(dataset_train_loc_SiimACR)
-            sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_SiimACR)
-        batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_SiimACR, args.batch_size, drop_last=True)
-        train_loader_loc_SiimACR = DataLoader(dataset_train_loc_SiimACR, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
-        test_loader_loc_SiimACR = DataLoader(dataset_val_loc_SiimACR, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+        if _use_task("siimacrLOC"):
+            ## -- SIIM-ACR Dataset -- ##
+            dataset_train_loc_SiimACR = build_dataset(image_set=DATASETS_CONFIG["loc_siimacr_trainTag"], args=args) ## RSNApneumonia Dataset - Training A set # siimacr_train | siimacr_train_A | siimacr_train_B
+            dataset_val_loc_SiimACR = build_dataset(image_set=DATASETS_CONFIG["loc_siimacr_testTag"], args=args)
+            if args.distributed:
+                sampler_train_SiimACR = DistributedSampler(dataset_train_loc_SiimACR, shuffle=True)
+                sampler_val = DistributedSampler(dataset_val_loc_SiimACR, shuffle=False)
+            else:
+                sampler_train_SiimACR = torch.utils.data.RandomSampler(dataset_train_loc_SiimACR)
+                sampler_val = torch.utils.data.SequentialSampler(dataset_val_loc_SiimACR)
+            batch_sampler_train = torch.utils.data.BatchSampler(sampler_train_SiimACR, args.batch_size, drop_last=True)
+            train_loader_loc_SiimACR = DataLoader(dataset_train_loc_SiimACR, batch_sampler=batch_sampler_train, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
+            test_loader_loc_SiimACR = DataLoader(dataset_val_loc_SiimACR, 1, sampler=sampler_val, drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers) # RETURN
 
 
         ## Segmentation -------------------------------------------------------------
@@ -4345,33 +4397,36 @@ def dataloader_return(args):
         # test_dataset = ChestXDetDataset(test_image_path_file,image_size=(args.imgsize,args.imgsize), mode="test")
         # test_loader_seg_ChestXDet = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False )
 
-        train_dataset = Candid_PTX_PXSDataset([(DATASETS_CONFIG["seg_candidptx_root"], DATASETS_CONFIG["seg_candidptx_trainList"])], image_size=(args.imgsize,args.imgsize), mode="train")
-        sampler = torch.utils.data.RandomSampler(train_dataset)
-        train_loader_seg_CANDIDptx = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=sampler)
-        # valid_dataset = Candid_PTX_PXSDataset([("/scratch/jliang12/data/CANDID-PTX/dataset","data/candid_ptx/valid.txt")], image_size=(args.imgsize,args.imgsize), mode="valid")
-        # sampler = torch.utils.data.RandomSampler(valid_dataset)
-        # val_loader_seg_CANDIDptx = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.num_workers,pin_memory=True, sampler=sampler)
-        test_dataset = Candid_PTX_PXSDataset([(DATASETS_CONFIG["seg_candidptx_root"], DATASETS_CONFIG["seg_candidptx_testList"])], image_size=(args.imgsize,args.imgsize), mode="test")
-        sampler = torch.utils.data.RandomSampler(test_dataset)
-        test_loader_seg_CANDIDptx = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False)
+        if _use_task("candidptxSEG"):
+            train_dataset = Candid_PTX_PXSDataset([(DATASETS_CONFIG["seg_candidptx_root"], DATASETS_CONFIG["seg_candidptx_trainList"])], image_size=(args.imgsize,args.imgsize), mode="train")
+            sampler = torch.utils.data.RandomSampler(train_dataset)
+            train_loader_seg_CANDIDptx = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=sampler)
+            # valid_dataset = Candid_PTX_PXSDataset([("/scratch/jliang12/data/CANDID-PTX/dataset","data/candid_ptx/valid.txt")], image_size=(args.imgsize,args.imgsize), mode="valid")
+            # sampler = torch.utils.data.RandomSampler(valid_dataset)
+            # val_loader_seg_CANDIDptx = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.num_workers,pin_memory=True, sampler=sampler)
+            test_dataset = Candid_PTX_PXSDataset([(DATASETS_CONFIG["seg_candidptx_root"], DATASETS_CONFIG["seg_candidptx_testList"])], image_size=(args.imgsize,args.imgsize), mode="test")
+            sampler = torch.utils.data.RandomSampler(test_dataset)
+            test_loader_seg_CANDIDptx = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False)
 
 
-        train_dataset = chestxdet_dataset(image_path=DATASETS_CONFIG["seg_chestxdet_trainRoot"], masks_path=DATASETS_CONFIG["seg_chestxdet_trainList"], image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
-        train_loader_seg_ChestXDet = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, drop_last=True )
+        if _use_task("chestxdetSEG"):
+            train_dataset = chestxdet_dataset(image_path=DATASETS_CONFIG["seg_chestxdet_trainRoot"], masks_path=DATASETS_CONFIG["seg_chestxdet_trainList"], image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
+            train_loader_seg_ChestXDet = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, drop_last=True )
 
-        test_dataset = chestxdet_dataset(image_path=DATASETS_CONFIG["seg_chestxdet_testRoot"],masks_path=DATASETS_CONFIG["seg_chestxdet_testList"], image_size=(args.imgsize,args.imgsize), mode='test')
-        test_loader_seg_ChestXDet = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False )
+            test_dataset = chestxdet_dataset(image_path=DATASETS_CONFIG["seg_chestxdet_testRoot"],masks_path=DATASETS_CONFIG["seg_chestxdet_testList"], image_size=(args.imgsize,args.imgsize), mode='test')
+            test_loader_seg_ChestXDet = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False )
 
 
-        train_dataset = SIIM_PXSDataset([(DATASETS_CONFIG["seg_siimacr_trainRoot"], DATASETS_CONFIG["seg_siimacr_trainList"])], image_size=(args.imgsize,args.imgsize), mode="train")
-        sampler = torch.utils.data.RandomSampler(train_dataset)
-        train_loader_seg_SIIM = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=sampler, drop_last=True)
-        # valid_dataset = SIIM_PXSDataset([("/scratch/jliang12/data/siim_pneumothorax_segmentation/val_jpeg","data/pxs/val.txt")], image_size=(args.imgsize,args.imgsize), mode="valid")
-        # sampler = torch.utils.data.RandomSampler(valid_dataset)
-        # val_loader_seg_SIIM = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.num_workers,pin_memory=True, sampler=sampler)
-        test_dataset = SIIM_PXSDataset([(DATASETS_CONFIG["seg_siimacr_testRoot"], DATASETS_CONFIG["seg_siimacr_testList"])], image_size=(args.imgsize,args.imgsize), mode="test")
-        sampler = torch.utils.data.RandomSampler(test_dataset)
-        test_loader_seg_SIIM = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False)
+        if _use_task("siimacrSEG"):
+            train_dataset = SIIM_PXSDataset([(DATASETS_CONFIG["seg_siimacr_trainRoot"], DATASETS_CONFIG["seg_siimacr_trainList"])], image_size=(args.imgsize,args.imgsize), mode="train")
+            sampler = torch.utils.data.RandomSampler(train_dataset)
+            train_loader_seg_SIIM = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=sampler, drop_last=True)
+            # valid_dataset = SIIM_PXSDataset([("/scratch/jliang12/data/siim_pneumothorax_segmentation/val_jpeg","data/pxs/val.txt")], image_size=(args.imgsize,args.imgsize), mode="valid")
+            # sampler = torch.utils.data.RandomSampler(valid_dataset)
+            # val_loader_seg_SIIM = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.num_workers,pin_memory=True, sampler=sampler)
+            test_dataset = SIIM_PXSDataset([(DATASETS_CONFIG["seg_siimacr_testRoot"], DATASETS_CONFIG["seg_siimacr_testList"])], image_size=(args.imgsize,args.imgsize), mode="test")
+            sampler = torch.utils.data.RandomSampler(test_dataset)
+            test_loader_seg_SIIM = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False)
 
 
         return train_loader_cls_CheXpert, test_loader_cls_CheXpert, train_loader_cls_NIHChestXray14, test_loader_cls_NIHChestXray14, train_loader_cls_VinDRCXR, test_loader_cls_VinDRCXR, train_loader_cls_NIHShenzhen, test_loader_cls_NIHShenzhen, train_loader_cls_MIMICII, test_loader_cls_MIMICII, \
