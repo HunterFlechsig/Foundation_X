@@ -6,7 +6,7 @@
 
 module load mamba/latest
 module load cuda-11.6.2-gcc-12.1.0
-source activate tf-tnt-gpu2
+source activate foundation_x
 
 CONFIGFILE=config/DINO/DINO_4scale_swinBASE.py
 LOGFILE=/scratch/hflechsi/Foundation_X/results/smoke_v107
@@ -42,7 +42,7 @@ total_epochs=$(( ${#TASKS[@]} + 1 ))
 export MASTER_ADDR=127.0.0.1
 export MASTER_PORT=29501
 
-~/.conda/envs/tf-tnt-gpu2/bin/python main_Consolidated.py --taskcomponent foundation_x5_pretraining --train --numClasses 1 --dataset_file $DATASETFILE --classification_dataset $DATASETFILE --num_workers $num_workers --coco_path $coco_path --weight-decay 0.0001 \
+~/.conda/envs/foundation_x/bin/python main_Consolidated.py --taskcomponent foundation_x5_pretraining --train --numClasses 1 --dataset_file $DATASETFILE --classification_dataset $DATASETFILE --num_workers $num_workers --coco_path $coco_path --weight-decay 0.0001 \
 	--output_dir $LOGFILE -c $CONFIGFILE --imgsize $IMGSIZE --backbonemodel $BACKBONEMODEL --init $INIT --total_epochs $total_epochs --batch_size $BATCHSIZE --opt $opt \
 	--finetune_ignore label_enc.weight class_embed \
 	--backbone_dir $backbone_dir --lr_backbone $lr_backbone --lr_locEnc $lr_locEnc --lr_locDec $lr_locDec  --lr_segmentor $lr_segmentor \
