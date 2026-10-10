@@ -41,6 +41,9 @@ total_epochs=$(( ${#TASKS[@]} + 1 ))
 
 export MASTER_ADDR=127.0.0.1
 export MASTER_PORT=29501
+# PyTorch 1.10 cuBLAS returns CUBLAS_STATUS_INVALID_VALUE on driver 525+
+# unless a workspace size is set.
+export CUBLAS_WORKSPACE_CONFIG=:4096:8
 
 ~/.conda/envs/foundation_x/bin/python main_Consolidated.py --taskcomponent foundation_x5_pretraining --train --numClasses 1 --dataset_file $DATASETFILE --classification_dataset $DATASETFILE --num_workers $num_workers --coco_path $coco_path --weight-decay 0.0001 \
 	--output_dir $LOGFILE -c $CONFIGFILE --imgsize $IMGSIZE --backbonemodel $BACKBONEMODEL --init $INIT --total_epochs $total_epochs --batch_size $BATCHSIZE --opt $opt \
