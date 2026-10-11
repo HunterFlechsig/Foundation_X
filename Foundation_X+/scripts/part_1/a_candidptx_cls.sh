@@ -4,7 +4,7 @@
 #SBATCH -G a100:1
 #SBATCH -c 12
 #SBATCH --mem=80G
-#SBATCH -p general
+#SBATCH -p public
 #SBATCH -t 1-00:00:00
 #SBATCH -q public
 #SBATCH -o /scratch/hflechsi/Foundation_X/results/part_1/logs/%x_%j.out

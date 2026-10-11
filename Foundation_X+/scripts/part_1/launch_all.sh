@@ -1,6 +1,6 @@
 #!/bin/bash
-# Submit all seven CANDID-PTX part_1 jobs. Run from anywhere:
-#   bash Foundation_X+/part_1/launch_all.sh
+# Submit all seven CANDID-PTX part_1 jobs. From Foundation_X+/:
+#   bash scripts/part_1/launch_all.sh
 
 cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 mkdir -p /scratch/hflechsi/Foundation_X/results/part_1/logs
