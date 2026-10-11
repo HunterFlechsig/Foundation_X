@@ -1,6 +1,26 @@
+import glob
+import os
+import re
 import torch
 import numpy as np
 import copy
+
+
+def find_latest_saved_checkpoint(output_dir):
+	"""Newest ckpt_E{epoch}_TH{head}.pth written by saveAllModel, or None."""
+	if not output_dir or not os.path.isdir(output_dir):
+		return None
+	best_path = None
+	best_epoch = -1
+	for path in glob.glob(os.path.join(output_dir, 'ckpt_E*_TH*.pth')):
+		match = re.search(r'ckpt_E(\d+)_TH\d+\.pth$', os.path.basename(path))
+		if match is None:
+			continue
+		epoch = int(match.group(1))
+		if epoch > best_epoch:
+			best_epoch = epoch
+			best_path = path
+	return best_path
 
 
 def load_weights(model, args):
@@ -164,7 +184,7 @@ def load_weights_resume(model, model_ema, optimizer, args):
 		print("Optimizer Loaded...")
 		
 		start_epoch = checkpoint['epoch']
-		print("New Starting Epoch:", start_epoch)
+		print("Saved epoch:", start_epoch, "- training resumes at", start_epoch + 1)
 
 		### model.backbone[0].segmentation_heads[4].weight
 		### model.backbone[0].segmentation_heads[4].bias
