@@ -7,6 +7,7 @@
 #SBATCH -p public
 #SBATCH -t 1-00:00:00
 #SBATCH -q public
+#SBATCH -A grp_jliang12
 #SBATCH -o /scratch/hflechsi/Foundation_X/results/part_1/logs/%x_%j.out
 #SBATCH -e /scratch/hflechsi/Foundation_X/results/part_1/logs/%x_%j.err
 #SBATCH --mail-type=ALL
