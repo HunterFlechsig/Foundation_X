@@ -63,16 +63,21 @@ def draw_curve(ax, points, n_tasks, tested, color):
     if not ordered:
         return
     curves.plot_curve(ax, ordered, n_tasks, color, UNFOCUSED_STYLE, None, linewidth=1.5)
-    focused = [row for row in ordered if row["training"] == tested]
-    curves.plot_curve(
-        ax,
-        focused,
-        n_tasks,
-        color,
-        FOCUSED_STYLE,
-        None,
+    focused = sorted(
+        (row for row in ordered if row["training"] == tested),
+        key=lambda row: row["epoch"],
+    )
+    if not focused:
+        return
+    ax.plot(
+        [curves.cycle_x(row["epoch"], n_tasks) for row in focused],
+        [row["score"] for row in focused],
+        color=color,
+        linestyle=FOCUSED_STYLE,
+        linewidth=1.3,
         marker="o",
-        linewidth=2.3,
+        markersize=2.8,
+        zorder=4,
     )
 
 
@@ -103,14 +108,33 @@ def y_limits(scores):
     return low - pad, high + pad
 
 
-def plot_overlay(rows, n_tasks, x_max, task_type, run_name, out_path):
+def datasets_in_train_order(by_dataset, task_type, order):
+    """Datasets on this figure, in the order their task is trained."""
+    seen = []
+    for trained_type, dataset in order:
+        if trained_type == task_type and dataset in by_dataset and dataset not in seen:
+            seen.append(dataset)
+    for dataset in sorted(by_dataset, key=dataset_sort_key):
+        if dataset not in seen:
+            seen.append(dataset)
+    return seen
+
+
+def train_position(task_type, dataset, order):
+    for index, task in enumerate(order, start=1):
+        if task == (task_type, dataset):
+            return index
+    return None
+
+
+def plot_overlay(rows, n_tasks, x_max, task_type, run_name, order, out_path):
     by_dataset = defaultdict(lambda: defaultdict(list))
     for row in rows:
         row_task, dataset = row["tested"]
         if row_task != task_type:
             continue
         by_dataset[dataset][row["model"]].append(row)
-    datasets = sorted(by_dataset, key=dataset_sort_key)
+    datasets = datasets_in_train_order(by_dataset, task_type, order)
     if len(datasets) < 2:
         return False
 
@@ -146,15 +170,18 @@ def plot_overlay(rows, n_tasks, x_max, task_type, run_name, out_path):
             [0],
             [0],
             color=DATASET_COLOR.get(dataset, "#333333"),
-            linewidth=2.3,
-            label=curves.DISPLAY_DATASET.get(dataset, dataset),
+            linewidth=1.3,
+            label="{} {}".format(
+                train_position(task_type, dataset, order) or "",
+                curves.DISPLAY_DATASET.get(dataset, dataset),
+            ).strip(),
         )
         for dataset in datasets
     ]
     legend_handles.extend([
         plt.Line2D(
-            [0], [0], color="black", linewidth=2.3, linestyle=FOCUSED_STYLE,
-            marker="o", markersize=4.5, label="Focused",
+            [0], [0], color="black", linewidth=1.3, linestyle=FOCUSED_STYLE,
+            marker="o", markersize=2.8, label="Focused",
         ),
         plt.Line2D([0], [0], color="black", linewidth=1.5, linestyle=UNFOCUSED_STYLE, label="Unfocused"),
     ])
@@ -207,13 +234,14 @@ def main():
             print("No test rows in {}".format(csv_path))
             continue
         n_tasks = curves.cycle_length(part, run, rows)
+        order = curves.training_order(rows, n_tasks)
         x_max = curves.highest_cycle(rows, n_tasks) + 0.4
         present = {row["tested"][0] for row in rows}
         for task_type in TASK_ORDER:
             if task_type not in present:
                 continue
             out_path = os.path.join(output_dir, "{}_{}.png".format(run, task_type))
-            if plot_overlay(rows, n_tasks, x_max, task_type, run, out_path):
+            if plot_overlay(rows, n_tasks, x_max, task_type, run, order, out_path):
                 wrote += 1
                 print("Wrote {}".format(out_path))
     if wrote == 0:
