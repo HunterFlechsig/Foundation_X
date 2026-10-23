@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Overlay Part 2 datasets on one student panel and one teacher panel.
 
-Each dataset is one color. A segment is solid when that dataset's own task
-was just trained, and dotted when another task was trained. One figure is
-written per run and task (classification, localization, segmentation).
+Each dataset is one color. A dotted line connects every evaluation. A solid
+line with a point at each focused evaluation connects the cycles that trained
+that dataset. One figure is written per run and task.
 
 Reads the same export_csvFile.csv files as plot_focused_unfocused.py.
 """
@@ -58,34 +58,22 @@ def dataset_sort_key(name):
 
 
 def draw_curve(ax, points, n_tasks, tested, color):
-    """Connect epochs in order. The segment that lands on a point uses that point's focus."""
+    """Dotted line through every point. Solid line and markers on focused points only."""
     ordered = sorted(points, key=lambda row: row["epoch"])
     if not ordered:
         return
-    if len(ordered) == 1:
-        row = ordered[0]
-        ax.plot(
-            curves.cycle_x(row["epoch"], n_tasks),
-            row["score"],
-            color=color,
-            marker="o",
-            linestyle="None",
-        )
-        return
-    for left, right in zip(ordered, ordered[1:]):
-        focused = right["training"] == tested
-        ax.plot(
-            [
-                curves.cycle_x(left["epoch"], n_tasks),
-                curves.cycle_x(right["epoch"], n_tasks),
-            ],
-            [left["score"], right["score"]],
-            color=color,
-            linestyle=FOCUSED_STYLE if focused else UNFOCUSED_STYLE,
-            linewidth=2.3 if focused else 1.5,
-            solid_capstyle="round",
-            zorder=3 if focused else 2,
-        )
+    curves.plot_curve(ax, ordered, n_tasks, color, UNFOCUSED_STYLE, None, linewidth=1.5)
+    focused = [row for row in ordered if row["training"] == tested]
+    curves.plot_curve(
+        ax,
+        focused,
+        n_tasks,
+        color,
+        FOCUSED_STYLE,
+        None,
+        marker="o",
+        linewidth=2.3,
+    )
 
 
 def style_axis(ax, title, ylabel, x_max, y_limits, show_ylabel):
@@ -164,7 +152,10 @@ def plot_overlay(rows, n_tasks, x_max, task_type, run_name, out_path):
         for dataset in datasets
     ]
     legend_handles.extend([
-        plt.Line2D([0], [0], color="black", linewidth=2.3, linestyle=FOCUSED_STYLE, label="Focused"),
+        plt.Line2D(
+            [0], [0], color="black", linewidth=2.3, linestyle=FOCUSED_STYLE,
+            marker="o", markersize=4.5, label="Focused",
+        ),
         plt.Line2D([0], [0], color="black", linewidth=1.5, linestyle=UNFOCUSED_STYLE, label="Unfocused"),
     ])
     fig.legend(
