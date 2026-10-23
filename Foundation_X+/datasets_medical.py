@@ -3833,10 +3833,10 @@ def dataloader_return(args):
         # test_dataset = ChestXDetDataset(test_image_path_file,image_size=(args.imgsize,args.imgsize), mode="test")
         # test_loader_seg_ChestXDet = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False )
 
-        train_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/train/", masks_path="/scratch/jliang12/data/ChestX-Det/train_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
+        train_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/train/", masks_path="/data/jliang12/nuislam/ChestX-Det/train_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
         train_loader_seg_ChestXDet = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, drop_last=True )
 
-        test_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/test/",masks_path="/scratch/jliang12/data/ChestX-Det/test_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='test')
+        test_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/test/",masks_path="/data/jliang12/nuislam/ChestX-Det/test_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='test')
         test_loader_seg_ChestXDet = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False )
 
 
@@ -4079,10 +4079,10 @@ def dataloader_return(args):
         test_loader_seg_CANDIDptx = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False)
 
 
-        train_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/train/", masks_path="/scratch/jliang12/data/ChestX-Det/train_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
+        train_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/train/", masks_path="/data/jliang12/nuislam/ChestX-Det/train_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
         train_loader_seg_ChestXDet = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, drop_last=True )
 
-        test_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/test/",masks_path="/scratch/jliang12/data/ChestX-Det/test_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='test')
+        test_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/test/",masks_path="/data/jliang12/nuislam/ChestX-Det/test_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='test')
         test_loader_seg_ChestXDet = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False )
 
 
@@ -4687,10 +4687,10 @@ def dataloader_return(args):
     #     test_loader_seg_CANDIDptx = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False)
 
 
-    #     train_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/train/", masks_path="/scratch/jliang12/data/ChestX-Det/train_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
+    #     train_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/train/", masks_path="/data/jliang12/nuislam/ChestX-Det/train_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
     #     train_loader_seg_ChestXDet = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, drop_last=True )
 
-    #     test_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/test/",masks_path="/scratch/jliang12/data/ChestX-Det/test_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='test')
+    #     test_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/test/",masks_path="/data/jliang12/nuislam/ChestX-Det/test_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='test')
     #     test_loader_seg_ChestXDet = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False )
 
 
@@ -5103,10 +5103,10 @@ def dataloader_return(args):
         return train_loader_seg_CANDIDptx, test_loader_seg_CANDIDptx, 0
 
     if args.taskcomponent in ['foundation_x3_FineTuning', 'foundation_x4_pretraining', 'foundation_x5_pretraining'] and args.cyclictask == 'segFT_TESTseg_chestxdetSEG':  
-        train_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/train/", masks_path="/scratch/jliang12/data/ChestX-Det/train_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
+        train_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/train/", masks_path="/data/jliang12/nuislam/ChestX-Det/train_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='train') ## ChestXDetDataset chestxdet_dataset
         train_loader_seg_ChestXDet = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, drop_last=True )
 
-        test_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/test/",masks_path="/scratch/jliang12/data/ChestX-Det/test_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='test')
+        test_dataset = chestxdet_dataset(image_path="/scratch/jliang12/data/ChestX-Det/test/",masks_path="/data/jliang12/nuislam/ChestX-Det/test_binary_mask/", image_size=(args.imgsize,args.imgsize), mode='test')
         test_loader_seg_ChestXDet = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, drop_last=False )
         return train_loader_seg_ChestXDet, test_loader_seg_ChestXDet, 0
 

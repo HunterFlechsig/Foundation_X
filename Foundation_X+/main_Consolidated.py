@@ -41,7 +41,7 @@ from torchmetrics.functional.classification import multilabel_accuracy
 from utils_segmentation import load_popar_weight, AverageMeter, save_model, save_model2, dice_score, mean_dice_coef, torch_dice_coef_loss, exp_lr_scheduler_with_warmup, step_decay, load_swin_pretrained
 from datasets_medical import build_transform_segmentation, dataloader_return, PXSDataset, MontgomeryDataset, JSRTClavicleDataset, JSRTHeartDataset,JSRTLungDataset, VinDrRibCXRDataset, ChestXDetDataset, JSRTLungDataset, VindrCXRHeartDataset
 from timm.utils import NativeScaler, ModelEma
-from models.load_weights_model import load_weights, load_weights_resume, load_weights_resume2, load_weights_foundationX
+from models.load_weights_model import find_latest_saved_checkpoint, load_weights, load_weights_resume, load_weights_resume2, load_weights_foundationX
 import math
 
 from timm.scheduler import create_scheduler
@@ -1849,6 +1849,11 @@ def main(args):
 
     # setup logger
     os.makedirs(args.output_dir, exist_ok=True)
+    if args.resume is None:
+        latest_checkpoint = find_latest_saved_checkpoint(args.output_dir)
+        if latest_checkpoint is not None:
+            args.resume = latest_checkpoint
+            print("[Resume] Continuing from", latest_checkpoint)
     logger = setup_logger(output=os.path.join(args.output_dir, 'info.txt'), distributed_rank=args.rank, color=False, name="detr")
     logger.info("git:\n  {}\n".format(utils.get_sha()))
     logger.info("Command: "+' '.join(sys.argv))
@@ -3245,7 +3250,7 @@ def main(args):
         print("-------------", file=log_writter_DETECTION)
 
         
-        if args.backbone_dir is not None:
+        if args.backbone_dir is not None and args.resume is None:
             model = load_weights(model, args)
             # model = torch.nn.DataParallel(model)
             # model = nn.DataParallel(model, device_ids=[0, 1])
