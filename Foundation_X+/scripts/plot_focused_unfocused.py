@@ -299,23 +299,24 @@ def order_note(tested, order):
     return "After each focused point, the next points train: {}".format(following.replace("; ", " → "))
 
 
-def plot_curve(ax, points, n_tasks, color, linestyle, label, marker=None):
+def plot_curve(ax, points, n_tasks, color, linestyle, label, marker=None, linewidth=2.0):
     ordered = sorted(points, key=lambda row: row["epoch"])
     if not ordered:
         return
     xs = [cycle_x(row["epoch"], n_tasks) for row in ordered]
     ys = [row["score"] for row in ordered]
-    ax.plot(
-        xs,
-        ys,
-        color=color,
-        linestyle=linestyle,
-        linewidth=2.0,
-        marker=marker,
-        markersize=4.5,
-        label=label,
-        zorder=4 if marker else 2,
-    )
+    style = {
+        "color": color,
+        "linestyle": linestyle,
+        "linewidth": linewidth,
+        "zorder": 4 if linewidth >= 2.0 else 2,
+    }
+    if marker:
+        style["marker"] = marker
+        style["markersize"] = 4.5
+    if label:
+        style["label"] = label
+    ax.plot(xs, ys, **style)
 
 
 def plot_training_markers(ax, points, n_tasks, order):
@@ -457,6 +458,131 @@ def safe_name(text):
     return re.sub(r"[^A-Za-z0-9._-]+", "_", text)
 
 
+TASK_COLOR = {
+    "classification": "#2e7d32",
+    "localization": "#e6550d",
+    "segmentation": "#3b6ea5",
+}
+TEACHER_COLOR = {
+    "classification": "#143d18",
+    "localization": "#8c2d0a",
+    "segmentation": "#1c3554",
+}
+DISPLAY_DATASET = {
+    "CANDID-PTX": "CANDID-PTX",
+    "RSNApneumonia": "RSNA Pneumonia",
+    "ChestX-Det": "ChestX-Det",
+    "SIIM-ACRpneumothorax": "SIIM-ACR",
+}
+PANEL_DATASETS = {
+    "classification": ["CANDID-PTX", "RSNApneumonia", "ChestX-Det", "SIIM-ACRpneumothorax"],
+    "localization": ["CANDID-PTX", "RSNApneumonia", "ChestX-Det", "SIIM-ACRpneumothorax"],
+    "segmentation": ["CANDID-PTX", "ChestX-Det", "SIIM-ACRpneumothorax"],
+}
+PREFERRED_RUN = {
+    "part_1": "candidptx_cls_loc_seg",
+    "part_2": "cls_loc_seg",
+}
+
+
+def overview_groups(rows):
+    available = {row["tested"] for row in rows}
+    groups = []
+    for task_type in ("classification", "localization", "segmentation"):
+        datasets = [name for name in PANEL_DATASETS[task_type] if (task_type, name) in available]
+        if datasets:
+            groups.append((task_type, datasets))
+    return groups
+
+
+def draw_overview_panel(ax, task_rows, n_tasks, x_max, task_type, dataset, show_xlabel, show_ylabel):
+    color = TASK_COLOR[task_type]
+    teacher = TEACHER_COLOR[task_type]
+    by_model = defaultdict(list)
+    focused = defaultdict(list)
+    for row in task_rows:
+        by_model[row["model"]].append(row)
+        if row["training"] == (task_type, dataset):
+            focused[row["model"]].append(row)
+    plot_curve(ax, by_model["student"], n_tasks, color, "-", None, linewidth=1.0)
+    plot_curve(ax, by_model["teacher"], n_tasks, teacher, "--", None, linewidth=1.0)
+    plot_curve(ax, focused["student"], n_tasks, color, "-", None, linewidth=2.4)
+    plot_curve(ax, focused["teacher"], n_tasks, teacher, "--", None, linewidth=2.4)
+    for model, line_color, linestyle in (("student", color, "--"), ("teacher", teacher, ":")):
+        pool = focused[model]
+        best = best_score(pool)
+        if best is not None:
+            ax.axhline(best["score"], color=line_color, linestyle=linestyle, linewidth=1.0, zorder=1)
+    ax.set_title("{} Cross-Dataset Learning".format(DISPLAY_DATASET.get(dataset, dataset)), fontsize=10)
+    ax.set_xlim(1, x_max)
+    if x_max <= 16:
+        ax.xaxis.set_major_locator(MultipleLocator(1))
+    else:
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=6))
+    if show_xlabel:
+        ax.set_xlabel("Cycle")
+    if show_ylabel:
+        ax.set_ylabel("Performance ({})".format(TASK_YLABEL[task_type]))
+    ax.tick_params(labelsize=8)
+    ax.grid(True, alpha=0.25)
+
+
+def plot_overview(rows, n_tasks, x_max, out_path):
+    groups = overview_groups(rows)
+    if not groups:
+        return
+    by_tested = defaultdict(list)
+    for row in rows:
+        by_tested[row["tested"]].append(row)
+    ncols = max(len(datasets) for _task, datasets in groups)
+    nrows = len(groups)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(3.7 * ncols, 2.9 * nrows), squeeze=False)
+    for row_index, (task_type, datasets) in enumerate(groups):
+        for col_index in range(ncols):
+            ax = axes[row_index][col_index]
+            if col_index >= len(datasets):
+                ax.axis("off")
+                continue
+            dataset = datasets[col_index]
+            draw_overview_panel(
+                ax,
+                by_tested[(task_type, dataset)],
+                n_tasks,
+                x_max,
+                task_type,
+                dataset,
+                show_xlabel=(row_index == nrows - 1),
+                show_ylabel=(col_index == 0),
+            )
+    handles = [
+        plt.Line2D([0], [0], color=TASK_COLOR["classification"], linewidth=2.4, label="Classification"),
+        plt.Line2D([0], [0], color=TASK_COLOR["localization"], linewidth=2.4, label="Localization"),
+        plt.Line2D([0], [0], color=TASK_COLOR["segmentation"], linewidth=2.4, label="Segmentation"),
+        plt.Line2D([0], [0], color="black", linewidth=1.0, label="Student focused and unfocused"),
+        plt.Line2D([0], [0], color="black", linewidth=2.4, label="Student focused"),
+        plt.Line2D([0], [0], color="black", linewidth=1.0, linestyle="--", label="Student best focused"),
+        plt.Line2D([0], [0], color="0.35", linewidth=1.0, linestyle="--", label="Teacher focused and unfocused"),
+        plt.Line2D([0], [0], color="0.35", linewidth=2.4, linestyle="--", label="Teacher focused"),
+        plt.Line2D([0], [0], color="0.35", linewidth=1.0, linestyle=":", label="Teacher best focused"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, fontsize=8, bbox_to_anchor=(0.5, -0.02))
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+def choose_overview_run(loaded):
+    """Use the full cls/loc/seg run when it is present, otherwise the run with the most tasks."""
+    if not loaded:
+        return None
+    preferred = PREFERRED_RUN.get(loaded[0]["part"])
+    for item in loaded:
+        if item["run"] == preferred:
+            return item
+    return max(loaded, key=lambda item: len({row["tested"] for row in item["rows"]}))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results-root", default=RESULTS_ROOT)
@@ -471,6 +597,7 @@ def main():
 
     best = []
     wrote_plot = False
+    loaded_by_part = defaultdict(list)
     for part, run, run_dir in runs(args.results_root):
         csv_path = os.path.join(run_dir, "export_csvFile.csv")
         if not os.path.isfile(csv_path):
@@ -493,6 +620,21 @@ def main():
             wrote_plot = True
             print("Wrote {}".format(figure_path))
         best.extend(best_rows_for_run(part, run, rows, n_tasks))
+        loaded_by_part[part].append({
+            "part": part,
+            "run": run,
+            "rows": rows,
+            "n_tasks": n_tasks,
+            "x_max": x_max,
+        })
+
+    for part, loaded in loaded_by_part.items():
+        chosen = choose_overview_run(loaded)
+        part_dir = "part1" if part == "part_1" else "part2"
+        overview_path = os.path.join(output_dir, part_dir, "cross_dataset_learning.png")
+        plot_overview(chosen["rows"], chosen["n_tasks"], chosen["x_max"], overview_path)
+        wrote_plot = True
+        print("Wrote {}".format(overview_path))
 
     best_path = os.path.join(output_dir, "best_epoch_metrics.csv")
     with open(best_path, "w", newline="") as handle:
