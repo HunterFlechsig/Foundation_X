@@ -15,6 +15,7 @@ import argparse
 import csv
 import os
 import re
+import textwrap
 from collections import defaultdict
 
 import matplotlib
@@ -63,6 +64,7 @@ STUDENT_SOLID = "#1f4bff"
 TEACHER_SOLID = "#d62728"
 STUDENT_DASHED = "#2ca02c"
 TEACHER_DASHED = "#ff7f0e"
+TASK_MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*", "h", "<", ">"]
 
 # Written row order. The file header swaps Dataset and Task-Train.
 COLUMNS = [
@@ -271,7 +273,33 @@ def highest_cycle(rows, n_tasks):
     return max(cycle_number(row["epoch"], n_tasks) for row in rows)
 
 
-def plot_curve(ax, points, n_tasks, color, linestyle, label):
+def training_order(rows, n_tasks):
+    """Training tasks in the order they occur inside one cycle."""
+    slot_task = {}
+    for row in sorted(rows, key=lambda item: item["epoch"]):
+        slot = (row["epoch"] - 1) % n_tasks
+        slot_task.setdefault(slot, row["training"])
+    return [slot_task[slot] for slot in sorted(slot_task)]
+
+
+def order_after_focused(tested, order):
+    """Tasks that follow a focused point, wrapping around to the focused task."""
+    labels = [task_label(task) for task in order]
+    if tested not in order or len(order) < 2:
+        return ""
+    start = order.index(tested)
+    following = labels[start + 1:] + labels[:start]
+    return "; ".join(following)
+
+
+def order_note(tested, order):
+    following = order_after_focused(tested, order)
+    if not following:
+        return "This run trains only this task."
+    return "After each focused point, the next points train: {}".format(following.replace("; ", " → "))
+
+
+def plot_curve(ax, points, n_tasks, color, linestyle, label, marker=None):
     ordered = sorted(points, key=lambda row: row["epoch"])
     if not ordered:
         return
@@ -283,13 +311,36 @@ def plot_curve(ax, points, n_tasks, color, linestyle, label):
         color=color,
         linestyle=linestyle,
         linewidth=2.0,
-        marker="o",
-        markersize=3.5,
+        marker=marker,
+        markersize=4.5,
         label=label,
+        zorder=4 if marker else 2,
     )
 
 
-def plot_task(rows, tested, n_tasks, x_max, out_path):
+def plot_training_markers(ax, points, n_tasks, order):
+    """Mark each student point by the task that was just trained."""
+    marker_of = {task: TASK_MARKERS[index % len(TASK_MARKERS)] for index, task in enumerate(order)}
+    by_task = defaultdict(list)
+    for row in points:
+        if row["model"] == "student":
+            by_task[row["training"]].append(row)
+    for task in order:
+        task_points = sorted(by_task.get(task, []), key=lambda row: row["epoch"])
+        if not task_points:
+            continue
+        ax.scatter(
+            [cycle_x(row["epoch"], n_tasks) for row in task_points],
+            [row["score"] for row in task_points],
+            marker=marker_of[task],
+            s=28,
+            color=STUDENT_DASHED,
+            label="Trained: {}".format(task_label(task)),
+            zorder=3,
+        )
+
+
+def plot_task(rows, tested, n_tasks, x_max, order, out_path):
     task_rows = [row for row in rows if row["tested"] == tested]
     if not task_rows:
         return
@@ -300,11 +351,12 @@ def plot_task(rows, tested, n_tasks, x_max, out_path):
         if row["training"] == tested:
             focused[row["model"]].append(row)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6.5))
     plot_curve(ax, by_model["student"], n_tasks, STUDENT_DASHED, "--", "Student focused and unfocused")
     plot_curve(ax, by_model["teacher"], n_tasks, TEACHER_DASHED, "--", "Teacher focused and unfocused")
-    plot_curve(ax, focused["student"], n_tasks, STUDENT_SOLID, "-", "Student focused")
-    plot_curve(ax, focused["teacher"], n_tasks, TEACHER_SOLID, "-", "Teacher focused")
+    plot_training_markers(ax, task_rows, n_tasks, order)
+    plot_curve(ax, focused["student"], n_tasks, STUDENT_SOLID, "-", "Student focused", marker="o")
+    plot_curve(ax, focused["teacher"], n_tasks, TEACHER_SOLID, "-", "Teacher focused", marker="o")
 
     task_type, dataset = tested
     ax.set_title("{} {}".format(dataset, task_type))
@@ -317,7 +369,9 @@ def plot_task(rows, tested, n_tasks, x_max, out_path):
         ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=10))
     ax.grid(True, alpha=0.3)
     ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
-    fig.tight_layout()
+    note = textwrap.fill(order_note(tested, order), width=110)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.text(0.01, 0.01, note, fontsize=8, va="bottom")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -350,6 +404,7 @@ def best_rows_for_run(part, run, rows, n_tasks):
             "task": tested[0],
             "epochs_done": join_numbers(focused_epochs),
             "cycles_done": join_numbers(cycle_number(epoch, n_tasks) for epoch in focused_epochs),
+            "order_after_focused": order_after_focused(tested, training_order(rows, n_tasks)),
         }
         for model in ("student", "teacher"):
             model_rows = [row for row in task_rows if row["model"] == model]
@@ -378,6 +433,7 @@ BEST_FIELDS = [
     "task",
     "epochs_done",
     "cycles_done",
+    "order_after_focused",
     "student_focused_cycle",
     "student_focused_epoch",
     "student_focused_score",
@@ -425,6 +481,7 @@ def main():
             print("No test rows in {}".format(csv_path))
             continue
         n_tasks = cycle_length(part, run, rows)
+        order = training_order(rows, n_tasks)
         x_max = highest_cycle(rows, n_tasks) + 1
         part_dir = "part1" if part == "part_1" else "part2"
         figure_dir = os.path.join(output_dir, part_dir)
@@ -432,7 +489,7 @@ def main():
         for tested in tested_tasks:
             filename = "{}_{}.png".format(run, safe_name(task_label(tested)))
             figure_path = os.path.join(figure_dir, filename)
-            plot_task(rows, tested, n_tasks, x_max, figure_path)
+            plot_task(rows, tested, n_tasks, x_max, order, figure_path)
             wrote_plot = True
             print("Wrote {}".format(figure_path))
         best.extend(best_rows_for_run(part, run, rows, n_tasks))
