@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Plot focused and unfocused test curves for part 1 and part 2.
 
-Each figure is one evaluated dataset and task. A solid blue line is the
-student on epochs that trained that exact task. A solid red line is the
-teacher on those epochs. Every other training task is a dotted line, and
-the student and teacher each get their own color.
+Each figure is one evaluated dataset and task. The x-axis is the cycle.
+Solid blue and solid red are the student and teacher on cycles that trained
+that exact task. Dashed green and dashed orange connect every cycle for the
+student and teacher, so each dashed curve passes through its solid curve.
 
-Also writes best_epoch_metrics.csv. Student and teacher best epochs are
-chosen separately by the highest primary score: classification AUC,
-localization mAP50, or segmentation mean Dice.
+Also writes best_epoch_metrics.csv. Student and teacher best scores are
+chosen separately. The primary score is classification AUC, localization
+mAP50, or segmentation mean Dice.
 """
 
 import argparse
@@ -21,6 +21,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator, MultipleLocator
 
 
 RESULTS_ROOT = "/scratch/hflechsi/Foundation_X/results"
@@ -41,6 +42,27 @@ PART2_RUNS = [
     "cls_loc",
     "cls_loc_seg",
 ]
+
+# Tasks per cycle in the part 1 and part 2 launch scripts.
+RUN_CYCLE_LENGTH = {
+    ("part_1", "candidptx_cls"): 1,
+    ("part_1", "candidptx_loc"): 1,
+    ("part_1", "candidptx_seg"): 1,
+    ("part_1", "candidptx_cls_loc"): 2,
+    ("part_1", "candidptx_cls_seg"): 2,
+    ("part_1", "candidptx_loc_seg"): 2,
+    ("part_1", "candidptx_cls_loc_seg"): 3,
+    ("part_2", "cls"): 4,
+    ("part_2", "loc"): 4,
+    ("part_2", "seg"): 3,
+    ("part_2", "cls_loc"): 8,
+    ("part_2", "cls_loc_seg"): 11,
+}
+
+STUDENT_SOLID = "#1f4bff"
+TEACHER_SOLID = "#d62728"
+STUDENT_DASHED = "#2ca02c"
+TEACHER_DASHED = "#ff7f0e"
 
 # Written row order. The file header swaps Dataset and Task-Train.
 COLUMNS = [
@@ -113,36 +135,6 @@ TASK_HEAD = {
 TRAIN_RE = re.compile(
     r"^(Classification|Localization|Segmentation)_(.+?)_(?:[ABC]_)?Train$"
 )
-
-FOCUSED_STUDENT_COLOR = "#1f4bff"
-FOCUSED_TEACHER_COLOR = "#d62728"
-# Distinct colors that are not the solid blue or solid red.
-OTHER_COLORS = [
-    "#2ca02c",
-    "#ff7f0e",
-    "#9467bd",
-    "#8c564b",
-    "#e377c2",
-    "#17becf",
-    "#bcbd22",
-    "#7f7f7f",
-    "#a1d99b",
-    "#fd8d3c",
-    "#9e9ac8",
-    "#c49c94",
-    "#f7b6d2",
-    "#9edae5",
-    "#cedb9c",
-    "#636363",
-    "#74c476",
-    "#e6550d",
-    "#6a51a3",
-    "#ce6dbd",
-    "#31a354",
-    "#de9ed6",
-    "#b5cf6b",
-    "#fc8d62",
-]
 
 
 def runs(results_root):
@@ -249,6 +241,23 @@ def task_label(task):
     return "{} {}".format(dataset, task_type)
 
 
+def cycle_length(part, run, rows):
+    scheduled = RUN_CYCLE_LENGTH.get((part, run))
+    observed = len({row["training"] for row in rows})
+    if scheduled is None:
+        return max(observed, 1)
+    return max(scheduled, observed, 1)
+
+
+def cycle_x(epoch, n_tasks):
+    """Position of an epoch inside the cycle axis. Cycle 1 starts at x=1."""
+    return ((epoch - 1) / float(n_tasks)) + 1
+
+
+def cycle_number(epoch, n_tasks):
+    return ((epoch - 1) // n_tasks) + 1
+
+
 def checkpoint_name(epoch, training_task):
     head = TASK_HEAD.get(training_task)
     if head is None:
@@ -256,71 +265,56 @@ def checkpoint_name(epoch, training_task):
     return "ckpt_E{}_TH{}.pth".format(epoch, head)
 
 
-def series_style(model, training, tested, color_of):
-    focused = training == tested
-    if focused and model == "student":
-        return FOCUSED_STUDENT_COLOR, "-", "Student, {}".format(task_label(training))
-    if focused and model == "teacher":
-        return FOCUSED_TEACHER_COLOR, "-", "Teacher, {}".format(task_label(training))
-    color = color_of[(model, training)]
-    who = "Student" if model == "student" else "Teacher"
-    return color, ":", "{}, {}".format(who, task_label(training))
+def highest_cycle(rows, n_tasks):
+    if not rows:
+        return 1
+    return max(cycle_number(row["epoch"], n_tasks) for row in rows)
 
 
-def assign_other_colors(training_tasks, tested):
-    """One color per dotted line. Blue and red stay on the solid lines."""
-    color_of = {}
-    index = 0
-    others = sorted(task for task in training_tasks if task != tested)
-    for training in others:
-        for model in ("student", "teacher"):
-            color_of[(model, training)] = OTHER_COLORS[index % len(OTHER_COLORS)]
-            index += 1
-    return color_of
+def plot_curve(ax, points, n_tasks, color, linestyle, label):
+    ordered = sorted(points, key=lambda row: row["epoch"])
+    if not ordered:
+        return
+    xs = [cycle_x(row["epoch"], n_tasks) for row in ordered]
+    ys = [row["score"] for row in ordered]
+    ax.plot(
+        xs,
+        ys,
+        color=color,
+        linestyle=linestyle,
+        linewidth=2.0,
+        marker="o",
+        markersize=3.5,
+        label=label,
+    )
 
 
-def plot_task(rows, tested, out_path):
+def plot_task(rows, tested, n_tasks, x_max, out_path):
     task_rows = [row for row in rows if row["tested"] == tested]
     if not task_rows:
         return
-    training_tasks = {row["training"] for row in task_rows}
-    color_of = assign_other_colors(training_tasks, tested)
-    grouped = defaultdict(list)
+    by_model = defaultdict(list)
+    focused = defaultdict(list)
     for row in task_rows:
-        grouped[(row["model"], row["training"])].append(row)
+        by_model[row["model"]].append(row)
+        if row["training"] == tested:
+            focused[row["model"]].append(row)
 
-    def sort_key(item):
-        model, training = item
-        focused_rank = 0 if training == tested else 1
-        model_rank = 0 if model == "student" else 1
-        return (focused_rank, task_label(training), model_rank)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    plot_curve(ax, by_model["student"], n_tasks, STUDENT_DASHED, "--", "Student focused and unfocused")
+    plot_curve(ax, by_model["teacher"], n_tasks, TEACHER_DASHED, "--", "Teacher focused and unfocused")
+    plot_curve(ax, focused["student"], n_tasks, STUDENT_SOLID, "-", "Student focused")
+    plot_curve(ax, focused["teacher"], n_tasks, TEACHER_SOLID, "-", "Teacher focused")
 
-    fig_width = 10
-    fig_height = 6
-    n_lines = len(grouped)
-    if n_lines > 8:
-        fig_height = 7
-        fig_width = 12
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-    for key in sorted(grouped, key=sort_key):
-        points = sorted(grouped[key], key=lambda row: row["epoch"])
-        epochs = [row["epoch"] for row in points]
-        scores = [row["score"] for row in points]
-        color, linestyle, label = series_style(key[0], key[1], tested, color_of)
-        ax.plot(
-            epochs,
-            scores,
-            color=color,
-            linestyle=linestyle,
-            linewidth=2.0,
-            marker="o",
-            markersize=3.5,
-            label=label,
-        )
     task_type, dataset = tested
     ax.set_title("{} {}".format(dataset, task_type))
-    ax.set_xlabel("Epoch")
+    ax.set_xlabel("Cycle")
     ax.set_ylabel(TASK_YLABEL[task_type])
+    ax.set_xlim(1, x_max)
+    if x_max <= 16:
+        ax.xaxis.set_major_locator(MultipleLocator(1))
+    else:
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=10))
     ax.grid(True, alpha=0.3)
     ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
     fig.tight_layout()
@@ -329,35 +323,50 @@ def plot_task(rows, tested, out_path):
     plt.close(fig)
 
 
-def best_rows_for_run(part, run, rows):
-    grouped = defaultdict(list)
+def best_score(points):
+    if not points:
+        return None
+    return max(points, key=lambda row: (row["score"], -row["epoch"]))
+
+
+def join_numbers(values):
+    return ",".join(str(value) for value in values)
+
+
+def best_rows_for_run(part, run, rows, n_tasks):
+    by_tested = defaultdict(list)
     for row in rows:
-        grouped[(row["tested"], row["training"], row["model"])].append(row)
-    tested_training = {(tested, training) for tested, training, _model in grouped}
+        by_tested[row["tested"]].append(row)
     output = []
-    for tested, training in sorted(tested_training, key=lambda item: (task_label(item[0]), task_label(item[1]))):
+    for tested in sorted(by_tested, key=task_label):
+        task_rows = by_tested[tested]
+        focused_epochs = sorted({
+            row["epoch"] for row in task_rows if row["training"] == tested
+        })
         record = {
             "part": part,
             "run": run,
             "plotted_dataset": tested[1],
             "task": tested[0],
-            "training_task": task_label(training),
-            "focused": "yes" if training == tested else "no",
-            "student_epoch": "",
-            "student_score": "",
-            "student_checkpoint": "",
-            "teacher_epoch": "",
-            "teacher_score": "",
-            "teacher_checkpoint": "",
+            "epochs_done": join_numbers(focused_epochs),
+            "cycles_done": join_numbers(cycle_number(epoch, n_tasks) for epoch in focused_epochs),
         }
         for model in ("student", "teacher"):
-            points = grouped.get((tested, training, model), [])
-            if not points:
-                continue
-            best = max(points, key=lambda row: (row["score"], -row["epoch"]))
-            record["{}_epoch".format(model)] = best["epoch"]
-            record["{}_score".format(model)] = "{:.6f}".format(best["score"])
-            record["{}_checkpoint".format(model)] = checkpoint_name(best["epoch"], training)
+            model_rows = [row for row in task_rows if row["model"] == model]
+            focused_rows = [row for row in model_rows if row["training"] == tested]
+            for kind, pool in (("focused", focused_rows), ("all", model_rows)):
+                prefix = "{}_{}".format(model, kind)
+                best = best_score(pool)
+                if best is None:
+                    record["{}_cycle".format(prefix)] = ""
+                    record["{}_epoch".format(prefix)] = ""
+                    record["{}_score".format(prefix)] = ""
+                    record["{}_checkpoint".format(prefix)] = ""
+                    continue
+                record["{}_cycle".format(prefix)] = cycle_number(best["epoch"], n_tasks)
+                record["{}_epoch".format(prefix)] = best["epoch"]
+                record["{}_score".format(prefix)] = "{:.6f}".format(best["score"])
+                record["{}_checkpoint".format(prefix)] = checkpoint_name(best["epoch"], best["training"])
         output.append(record)
     return output
 
@@ -367,14 +376,24 @@ BEST_FIELDS = [
     "run",
     "plotted_dataset",
     "task",
-    "training_task",
-    "focused",
-    "student_epoch",
-    "student_score",
-    "student_checkpoint",
-    "teacher_epoch",
-    "teacher_score",
-    "teacher_checkpoint",
+    "epochs_done",
+    "cycles_done",
+    "student_focused_cycle",
+    "student_focused_epoch",
+    "student_focused_score",
+    "student_focused_checkpoint",
+    "teacher_focused_cycle",
+    "teacher_focused_epoch",
+    "teacher_focused_score",
+    "teacher_focused_checkpoint",
+    "student_all_cycle",
+    "student_all_epoch",
+    "student_all_score",
+    "student_all_checkpoint",
+    "teacher_all_cycle",
+    "teacher_all_epoch",
+    "teacher_all_score",
+    "teacher_all_checkpoint",
 ]
 
 
@@ -405,13 +424,18 @@ def main():
         if not rows:
             print("No test rows in {}".format(csv_path))
             continue
+        n_tasks = cycle_length(part, run, rows)
+        x_max = highest_cycle(rows, n_tasks) + 1
+        part_dir = "part1" if part == "part_1" else "part2"
+        figure_dir = os.path.join(output_dir, part_dir)
         tested_tasks = sorted({row["tested"] for row in rows}, key=task_label)
         for tested in tested_tasks:
-            filename = "{}_{}_{}.png".format(part, run, safe_name(task_label(tested)))
-            plot_task(rows, tested, os.path.join(output_dir, filename))
+            filename = "{}_{}.png".format(run, safe_name(task_label(tested)))
+            figure_path = os.path.join(figure_dir, filename)
+            plot_task(rows, tested, n_tasks, x_max, figure_path)
             wrote_plot = True
-            print("Wrote {}".format(os.path.join(output_dir, filename)))
-        best.extend(best_rows_for_run(part, run, rows))
+            print("Wrote {}".format(figure_path))
+        best.extend(best_rows_for_run(part, run, rows, n_tasks))
 
     best_path = os.path.join(output_dir, "best_epoch_metrics.csv")
     with open(best_path, "w", newline="") as handle:
