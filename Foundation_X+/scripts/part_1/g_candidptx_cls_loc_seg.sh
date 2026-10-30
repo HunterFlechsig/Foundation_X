@@ -8,8 +8,8 @@
 #SBATCH -t 1-00:00:00
 #SBATCH -q public
 #SBATCH -A grp_jliang12
-#SBATCH -o /scratch/hflechsi/Foundation_X/results/part_1_v2/logs/%x_%j.out
-#SBATCH -e /scratch/hflechsi/Foundation_X/results/part_1_v2/logs/%x_%j.err
+#SBATCH -o /scratch/hflechsi/Foundation_X/results/part_1_v3/logs/%x_%j.out
+#SBATCH -e /scratch/hflechsi/Foundation_X/results/part_1_v3/logs/%x_%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=hflechsi@asu.edu
 
@@ -24,7 +24,7 @@ source activate foundation_x_sol
 cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.."
 
 CONFIGFILE=config/DINO/DINO_4scale_swinBASE.py
-LOGFILE=/scratch/hflechsi/Foundation_X/results/part_1_v2/candidptx_cls_loc_seg
+LOGFILE=/scratch/hflechsi/Foundation_X/results/part_1_v3/candidptx_cls_loc_seg
 backbone_dir=/data/jliang12/dongaoma/Ark_models/TSconsist_NoOD_MIMIC_CheXpert_ChestXray14_RSNAPneumonia_VinDrCXR_Shenzhen_ep200.pth.tar
 
 BACKBONEMODEL=Swin-B

@@ -3,7 +3,7 @@
 #   bash scripts/part_1/launch_all.sh
 
 cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
-mkdir -p /scratch/hflechsi/Foundation_X/results/part_1_v2/logs
+mkdir -p /scratch/hflechsi/Foundation_X/results/part_1_v3/logs
 
 for script in \
     a_candidptx_cls.sh \
