@@ -287,9 +287,13 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     if getattr(criterion, 'tuning_matching', False):
         criterion.tuning_matching(epoch)
 
-    if args.modelEMA == "True_Epoch":
+    # Lock-release runs a frozen partial pass and then the full unfrozen pass in the
+    # same dataset epoch. The teacher moves once, after the unfrozen pass.
+    if args.modelEMA == "True_Epoch" and not (getattr(args, "lockrelease", False) and train_type != "uF"):
         ema_update_teacher(model, model_ema, momen, epoch, args.total_epochs)
-        ### model_ema = model # should ignore later
+        print("[Check] Teacher EMA updated once for dataset epoch {} (train_type={}).".format(epoch, train_type))
+    elif args.modelEMA == "True_Epoch":
+        print("[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type))
 
 
     # gather the stats from all processes

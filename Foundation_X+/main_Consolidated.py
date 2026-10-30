@@ -416,6 +416,19 @@ def reinitialize_zero_weights(m):
     return m
 
 
+def teacher_ema_due(train_type):
+    """Teacher EMA runs once per dataset epoch, after student training for that epoch.
+
+    Lock-release trains a frozen partial pass (F/F1/F2) and then the full unfrozen
+    pass (uF) inside the same epoch. Only the unfrozen pass moves the teacher.
+    """
+    if args.modelEMA != "True_Epoch":
+        return False
+    if args.lockrelease and train_type != "uF":
+        return False
+    return True
+
+
 def ema_update_teacher(model, teacher, momentum_schedule, it):
     with torch.no_grad():
         # if it < 10:
@@ -825,12 +838,13 @@ def train_one_epoch_SEGMENTATION(model, train_loader, optimizer, loss_scaler, ep
             # if conf.debug_mode:
             #     break
 
-    # if args.modelEMA == "True_Epoch" and train_type == 'uF': # Epoch based EMA update # ACTIVE
-    # if args.modelEMA == "True_Epoch" and epoch > 36:
-    if args.modelEMA == "True_Epoch":
+    if teacher_ema_due(train_type):
         model_ema = ema_update_teacher_Seg(model, model_ema, momen, epoch, log_writter_SEGMENTATION)
-        print("[Check] Teacher Model Updated....")
-        print("[Check] Teacher Model Updated....", file=log_writter_SEGMENTATION)
+        print("[Check] Teacher EMA updated once for dataset epoch {} (train_type={}).".format(epoch, train_type))
+        print("[Check] Teacher EMA updated once for dataset epoch {} (train_type={}).".format(epoch, train_type), file=log_writter_SEGMENTATION)
+    elif args.modelEMA == "True_Epoch":
+        print("[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type))
+        print("[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type), file=log_writter_SEGMENTATION)
 
     # print("Epoch {}: Loss_EMA = {}".format(epoch, lossesDICE_EMA.avg))
     # print("Epoch {}: Loss_EMA = {}".format(epoch, lossesDICE_EMA.avg), file=log_writter_SEGMENTATION)
@@ -1124,12 +1138,13 @@ def train_one_epoch_SEGMENTATION_SharedLocSeg(model, train_loader, optimizer, lo
             #     break
         del img, mask
 
-    # if args.modelEMA == "True_Epoch" and train_type == 'uF': # Epoch based EMA update # ACTIVE
-    # if args.modelEMA == "True_Epoch" and epoch > 36:
-    if args.modelEMA == "True_Epoch":
+    if teacher_ema_due(train_type):
         model_ema = ema_update_teacher_Seg(model, model_ema, momen, epoch, log_writter_SEGMENTATION)
-        print("[Check] Teacher Model Updated....")
-        print("[Check] Teacher Model Updated....", file=log_writter_SEGMENTATION)
+        print("[Check] Teacher EMA updated once for dataset epoch {} (train_type={}).".format(epoch, train_type))
+        print("[Check] Teacher EMA updated once for dataset epoch {} (train_type={}).".format(epoch, train_type), file=log_writter_SEGMENTATION)
+    elif args.modelEMA == "True_Epoch":
+        print("[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type))
+        print("[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type), file=log_writter_SEGMENTATION)
 
     # print("Epoch {}: Loss_EMA = {}".format(epoch, lossesDICE_EMA.avg))
     # print("Epoch {}: Loss_EMA = {}".format(epoch, lossesDICE_EMA.avg), file=log_writter_SEGMENTATION)
@@ -1599,8 +1614,13 @@ def train_CLASSIFICATION(train_loader, model, criterion, optimizer, epoch, args,
                 log_writter_CLASSIFICATION.flush()
         del images, target, features_cons_ema, features_cons, out_classifierHead, output
     
-    if args.modelEMA == "True_Epoch": # Epoch based EMA update # ACTIVE
+    if teacher_ema_due(train_type):
         model_ema = ema_update_teacher(model, model_ema, momen, epoch)
+        print("[Check] Teacher EMA updated once for dataset epoch {} (train_type={}).".format(epoch, train_type))
+        print("[Check] Teacher EMA updated once for dataset epoch {} (train_type={}).".format(epoch, train_type), file=log_writter_CLASSIFICATION)
+    elif args.modelEMA == "True_Epoch":
+        print("[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type))
+        print("[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type), file=log_writter_CLASSIFICATION)
 
     return losses.avg, model_ema
 
