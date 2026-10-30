@@ -1238,6 +1238,26 @@ class SIIMPTX(Dataset):
     return len(self.img_list)
   
 
+def candid_ptx_dicom_to_uint8(image_path):
+    """Decode a CANDID-PTX DICOM the same way the localization PNGs were made.
+
+    Invert MONOCHROME1, then min-max scale to uint8. Passing the raw 16-bit
+    array through Image.fromarray().convert('RGB') keeps only the high byte,
+    which turns these 12-bit chest X-rays nearly black.
+    """
+    dataset = dicom.dcmread(image_path)
+    pixels = dataset.pixel_array.astype(np.float32)
+    if str(getattr(dataset, "PhotometricInterpretation", "")) == "MONOCHROME1":
+        pixels = pixels.max() - pixels
+    low = float(pixels.min())
+    high = float(pixels.max())
+    if high > low:
+        pixels = (pixels - low) / (high - low) * 255.0
+    else:
+        pixels = np.zeros_like(pixels)
+    return pixels.astype(np.uint8)
+
+
 ## CANDID-PTX Classification Dataloader
 class CANDIDPTX(Dataset):
   def __init__(self, images_path, file_path, augment, num_class=1):
@@ -1260,7 +1280,7 @@ class CANDIDPTX(Dataset):
 
   def __getitem__(self, index):
     imagePath = self.img_list[index]
-    im_array = dicom.dcmread(imagePath).pixel_array
+    im_array = candid_ptx_dicom_to_uint8(imagePath)
     imageData = Image.fromarray(im_array).convert('RGB')
     imageLabel = torch.FloatTensor(self.img_label[index])
 
@@ -1982,8 +2002,7 @@ class Candid_PTX_PXSDataset(Dataset):
         imagePath = self.img_list[idx]
         maskrle = self.img_label[idx]
 
-        imageData = dicom.dcmread(imagePath).pixel_array
-        imageData = ((imageData - imageData.min()) * ( 1 / (imageData.max() - imageData.min()) * 255)).astype('uint8')
+        imageData = candid_ptx_dicom_to_uint8(imagePath)
         w, h = imageData.shape
         # imageData = np.repeat(np.expand_dims(imageData,-1),3,axis=-1)/255
         imageData = np.repeat(np.expand_dims(imageData,-1),3,axis=-1)
