@@ -8,14 +8,34 @@
 #SBATCH -t 1-00:00:00
 #SBATCH -q public
 #SBATCH -A grp_jliang12
-#SBATCH -o /scratch/hflechsi/Foundation_X/results/part_2/logs/%x_%j.out
-#SBATCH -e /scratch/hflechsi/Foundation_X/results/part_2/logs/%x_%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=hflechsi@asu.edu
 
 # Part 2: candidptxCLS_rsnapneumoniaCLS_chestxdetCLS_siimacrCLS_candidptxLOC_rsnapneumoniaLOC_chestxdetLOC_siimacrLOC
 # 200 cycles means each selected task is trained 200 times.
 # The trainer starts at epoch 1 and stops before total_epochs.
+# Launch: bash <this script> <experiment> [every_pass|once_per_epoch] [fixed|cosine]
+
+if [[ -z "${SLURM_JOB_ID:-}" ]]; then
+    SCRIPT_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
+    exec "$SCRIPT_DIR/../submit_job.sh" "$0" "$@"
+fi
+
+if [[ -z "${EXPERIMENT:-}" ]]; then
+    echo "Usage: bash <this script> <experiment> [every_pass|once_per_epoch] [fixed|cosine]" >&2
+    echo "Submit with that command or launch_all.sh. Direct sbatch needs EXPERIMENT, TEACHER_UPDATE, and EMA_MOMENTUM exported." >&2
+    exit 2
+fi
+TEACHER_UPDATE="${TEACHER_UPDATE:-every_pass}"
+EMA_MOMENTUM="${EMA_MOMENTUM:-fixed}"
+case "$TEACHER_UPDATE" in
+    every_pass|once_per_epoch) ;;
+    *) echo "teacher_update must be every_pass or once_per_epoch: $TEACHER_UPDATE" >&2; exit 2 ;;
+esac
+case "$EMA_MOMENTUM" in
+    fixed|cosine) ;;
+    *) echo "ema_momentum must be fixed or cosine: $EMA_MOMENTUM" >&2; exit 2 ;;
+esac
 
 module load mamba/latest
 module load cuda-11.6.2-gcc-12.1.0
@@ -24,7 +44,7 @@ source activate foundation_x_sol
 cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.."
 
 CONFIGFILE=config/DINO/DINO_4scale_swinBASE.py
-LOGFILE=/scratch/hflechsi/Foundation_X/results/part_2/cls_loc
+LOGFILE=/scratch/hflechsi/Foundation_X/results/${EXPERIMENT}/cls_loc
 backbone_dir=/data/jliang12/dongaoma/Ark_models/TSconsist_NoOD_MIMIC_CheXpert_ChestXray14_RSNAPneumonia_VinDrCXR_Shenzhen_ep200.pth.tar
 
 BACKBONEMODEL=Swin-B
@@ -61,7 +81,7 @@ cd /home/hflechsi/Foundation_X/Foundation_X+/
 	--output_dir $LOGFILE -c $CONFIGFILE --imgsize $IMGSIZE --backbonemodel $BACKBONEMODEL --init $INIT --total_epochs $total_epochs --batch_size $BATCHSIZE --opt $opt \
 	--finetune_ignore label_enc.weight class_embed \
 	--backbone_dir $backbone_dir --lr_backbone $lr_backbone --lr_locEnc $lr_locEnc --lr_locDec $lr_locDec --lr_segmentor $lr_segmentor \
-	--cyclictask $cyclictask --serverC $SERVER --modelEMA $EMAMODE --lockrelease --saveAllModel \
+	--cyclictask $cyclictask --serverC $SERVER --modelEMA $EMAMODE --teacher_update $TEACHER_UPDATE --ema_momentum $EMA_MOMENTUM --lockrelease --saveAllModel \
 	--options dn_scalar=100 embed_init_tgt=TRUE \
 	dn_label_coef=1.0 dn_bbox_coef=1.0 use_ema=False \
 	dn_box_noise_scale=1.0

@@ -1,9 +1,17 @@
 #!/bin/bash
-# Submit all seven CANDID-PTX part_1 jobs. From Foundation_X+/:
-#   bash scripts/part_1/launch_all.sh
+set -euo pipefail
+# Submit all seven CANDID-PTX part_1 jobs.
+#   bash scripts/part_1/launch_all.sh <experiment> [every_pass|once_per_epoch] [fixed|cosine]
+#   bash scripts/part_1/launch_all.sh part_1_v4 once_per_epoch cosine
 
-cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
-mkdir -p /scratch/hflechsi/Foundation_X/results/part_1_v3/logs
+SCRIPT_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
+if [[ $# -lt 1 ]]; then
+    echo "Usage: bash scripts/part_1/launch_all.sh <experiment> [every_pass|once_per_epoch] [fixed|cosine]" >&2
+    exit 2
+fi
+EXPERIMENT="$1"
+TEACHER_UPDATE="${2:-every_pass}"
+EMA_MOMENTUM="${3:-fixed}"
 
 for script in \
     a_candidptx_cls.sh \
@@ -14,5 +22,5 @@ for script in \
     f_candidptx_loc_seg.sh \
     g_candidptx_cls_loc_seg.sh
 do
-    sbatch "$script"
+    "$SCRIPT_DIR/../submit_job.sh" "$SCRIPT_DIR/$script" "$EXPERIMENT" "$TEACHER_UPDATE" "$EMA_MOMENTUM"
 done

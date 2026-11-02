@@ -49,13 +49,37 @@ def l2_regularizer(weights):
   return regularization_term
 
 
-def ema_update_teacher(model, teacher, momentum_schedule, it, total_epochs_args):
+def teacher_ema_due(args, train_type):
+    """Whether this training pass should move the teacher.
+
+    every_pass updates after both lock-release passes. once_per_epoch updates
+    only after the unfrozen pass.
+    """
+    if args is None or args.modelEMA != "True_Epoch":
+        return False
+    if getattr(args, "teacher_update", "every_pass") == "once_per_epoch" and getattr(args, "lockrelease", False) and train_type != "uF":
+        return False
+    return True
+
+
+def current_ema_momentum(args, it, fixed=0.80):
+    """Momentum for one teacher update. cosine indexes the 0.8-to-1 schedule."""
+    if args is None or getattr(args, "ema_momentum", "fixed") != "cosine":
+        return fixed
+    schedule = getattr(args, "ema_momentum_schedule", None)
+    if schedule is None or len(schedule) == 0:
+        return fixed
+    index = min(max(int(it), 0), len(schedule) - 1)
+    return float(schedule[index])
+
+
+def ema_update_teacher(model, teacher, momentum_schedule, it, total_epochs_args, args=None):
     with torch.no_grad():
         # if it < 10:
         #     m = momentum_schedule[it]  # momentum parameter
         # else:
         #     m = momentum_schedule[9]
-        m = 0.80
+        m = current_ema_momentum(args, it, fixed=0.80)
         for param_q, param_k in zip(model.parameters(), teacher.parameters()):
             param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
 
@@ -287,9 +311,13 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     if getattr(criterion, 'tuning_matching', False):
         criterion.tuning_matching(epoch)
 
-    if args.modelEMA == "True_Epoch":
-        ema_update_teacher(model, model_ema, momen, epoch, args.total_epochs)
-        ### model_ema = model # should ignore later
+    if teacher_ema_due(args, train_type):
+        ema_update_teacher(model, model_ema, momen, epoch, args.total_epochs, args)
+        m = current_ema_momentum(args, epoch, fixed=0.80)
+        print("[Check] Teacher EMA updated for dataset epoch {} (train_type={}, teacher_update={}, ema_momentum={}, m={:.4f}).".format(
+            epoch, train_type, args.teacher_update, args.ema_momentum, m))
+    elif args.modelEMA == "True_Epoch":
+        print("[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type))
 
 
     # gather the stats from all processes

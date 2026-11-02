@@ -2,8 +2,24 @@
 # Interactive check that every part_2 dataset opens.
 # Jobs (h) through (k) are subsets of (l), so this one run covers all five.
 # From an existing SOL GPU session, in Foundation_X+/:
-#   bash scripts/part_2/smoke.sh
+#   bash scripts/part_2/smoke.sh <experiment> [every_pass|once_per_epoch] [fixed|cosine]
 # --debug stops each pass after a few batches. One cycle visits each task once.
+
+if [[ $# -lt 1 ]]; then
+    echo "Usage: bash scripts/part_2/smoke.sh <experiment> [every_pass|once_per_epoch] [fixed|cosine]" >&2
+    exit 2
+fi
+EXPERIMENT="$1"
+TEACHER_UPDATE="${2:-every_pass}"
+EMA_MOMENTUM="${3:-fixed}"
+case "$TEACHER_UPDATE" in
+    every_pass|once_per_epoch) ;;
+    *) echo "teacher_update must be every_pass or once_per_epoch: $TEACHER_UPDATE" >&2; exit 2 ;;
+esac
+case "$EMA_MOMENTUM" in
+    fixed|cosine) ;;
+    *) echo "ema_momentum must be fixed or cosine: $EMA_MOMENTUM" >&2; exit 2 ;;
+esac
 
 module load mamba/latest
 module load cuda-11.6.2-gcc-12.1.0
@@ -12,7 +28,7 @@ source activate foundation_x_sol
 cd /home/hflechsi/Foundation_X/Foundation_X+/
 
 CONFIGFILE=config/DINO/DINO_4scale_swinBASE.py
-LOGFILE=/scratch/hflechsi/Foundation_X/results/part_2/smoke
+LOGFILE=/scratch/hflechsi/Foundation_X/results/${EXPERIMENT}/smoke
 backbone_dir=/data/jliang12/dongaoma/Ark_models/TSconsist_NoOD_MIMIC_CheXpert_ChestXray14_RSNAPneumonia_VinDrCXR_Shenzhen_ep200.pth.tar
 
 BACKBONEMODEL=Swin-B
@@ -47,7 +63,7 @@ mkdir -p "$LOGFILE"
 	--output_dir $LOGFILE -c $CONFIGFILE --imgsize $IMGSIZE --backbonemodel $BACKBONEMODEL --init $INIT --total_epochs $total_epochs --batch_size $BATCHSIZE --opt $opt \
 	--finetune_ignore label_enc.weight class_embed \
 	--backbone_dir $backbone_dir --lr_backbone $lr_backbone --lr_locEnc $lr_locEnc --lr_locDec $lr_locDec --lr_segmentor $lr_segmentor \
-	--cyclictask $cyclictask --serverC $SERVER --modelEMA $EMAMODE --lockrelease --saveAllModel --debug \
+	--cyclictask $cyclictask --serverC $SERVER --modelEMA $EMAMODE --teacher_update $TEACHER_UPDATE --ema_momentum $EMA_MOMENTUM --lockrelease --saveAllModel --debug \
 	--options dn_scalar=100 embed_init_tgt=TRUE \
 	dn_label_coef=1.0 dn_bbox_coef=1.0 use_ema=False \
 	dn_box_noise_scale=1.0

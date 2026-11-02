@@ -142,6 +142,10 @@ def get_args_parser():
     parser.add_argument('--cyclictask', default='heart', help='heart | leftlung | rightlung | heart_leftlung | leftlung_rightlung | heart_leftlung_rightlung')
 
     parser.add_argument("--modelEMA", type=str, default=None, help="use EMA Model || True_Epoch | True_Iteration")
+    parser.add_argument('--teacher_update', default='every_pass', choices=['every_pass', 'once_per_epoch'],
+                        help='every_pass updates the teacher after each lock-release pass. once_per_epoch updates only after the unfrozen pass.')
+    parser.add_argument('--ema_momentum', default='fixed', choices=['fixed', 'cosine'],
+                        help='fixed uses momentum 0.80 (0.90 for segmentation with sgd). cosine uses the 0.8 to 1 schedule.')
 
 
     # Optimizer parameters
@@ -416,13 +420,54 @@ def reinitialize_zero_weights(m):
     return m
 
 
+def teacher_ema_due(train_type):
+    """Whether this training pass should move the teacher.
+
+    every_pass keeps the previous behavior and updates after both lock-release
+    passes. once_per_epoch skips the frozen pass and updates after the unfrozen pass.
+    """
+    if args.modelEMA != "True_Epoch":
+        return False
+    if args.teacher_update == "once_per_epoch" and args.lockrelease and train_type != "uF":
+        return False
+    return True
+
+
+def current_ema_momentum(it, fixed=0.80):
+    """Momentum for one teacher update. cosine indexes the 0.8-to-1 schedule."""
+    if args.ema_momentum != "cosine":
+        return fixed
+    schedule = getattr(args, "ema_momentum_schedule", None)
+    if schedule is None or len(schedule) == 0:
+        return fixed
+    index = min(max(int(it), 0), len(schedule) - 1)
+    return float(schedule[index])
+
+
+def log_teacher_ema(epoch, train_type, momentum, log_file=None):
+    message = "[Check] Teacher EMA updated for dataset epoch {} (train_type={}, teacher_update={}, ema_momentum={}, m={:.4f}).".format(
+        epoch, train_type, args.teacher_update, args.ema_momentum, momentum)
+    print(message)
+    if log_file is not None:
+        print(message, file=log_file)
+        log_file.flush()
+
+
+def log_teacher_ema_skipped(train_type, log_file=None):
+    message = "[Check] Teacher EMA skipped on lock pass (train_type={}); it updates after the unfrozen pass.".format(train_type)
+    print(message)
+    if log_file is not None:
+        print(message, file=log_file)
+        log_file.flush()
+
+
 def ema_update_teacher(model, teacher, momentum_schedule, it):
     with torch.no_grad():
         # if it < 10:
         #     m = momentum_schedule[it]  # momentum parameter
         # else:
         #     m = momentum_schedule[9]
-        m = 0.80
+        m = current_ema_momentum(it, fixed=0.80)
         for param_q, param_k in zip(model.parameters(), teacher.parameters()):
             param_k.data.mul_(m).add_((1 - m) * param_q.detach().data) ## (1-m) taken from student model | m taken from teacher model
     return teacher
@@ -433,9 +478,10 @@ def ema_update_teacher_Seg(model, teacher, momentum_schedule, it, log_writter_SE
         #     m = momentum_schedule[it]  # momentum parameter
         # else:
         #     m = momentum_schedule[args.total_epochs-1]
-        m = 0.80
+        fixed_m = 0.80
         if args.opt == 'adamw_and_sgd' or args.opt == 'sgd':
-            m = 0.90
+            fixed_m = 0.90
+        m = current_ema_momentum(it, fixed=fixed_m)
         if log_writter_SEGMENTATION is not None:
             print("Epoch", it, " | Segmentation EMA Update Momentum m = ", m, file=log_writter_SEGMENTATION)
             log_writter_SEGMENTATION.flush()
@@ -827,10 +873,11 @@ def train_one_epoch_SEGMENTATION(model, train_loader, optimizer, loss_scaler, ep
 
     # if args.modelEMA == "True_Epoch" and train_type == 'uF': # Epoch based EMA update # ACTIVE
     # if args.modelEMA == "True_Epoch" and epoch > 36:
-    if args.modelEMA == "True_Epoch":
+    if teacher_ema_due(train_type):
         model_ema = ema_update_teacher_Seg(model, model_ema, momen, epoch, log_writter_SEGMENTATION)
-        print("[Check] Teacher Model Updated....")
-        print("[Check] Teacher Model Updated....", file=log_writter_SEGMENTATION)
+        log_teacher_ema(epoch, train_type, current_ema_momentum(epoch, fixed=0.90 if args.opt in ('sgd', 'adamw_and_sgd') else 0.80), log_writter_SEGMENTATION)
+    elif args.modelEMA == "True_Epoch":
+        log_teacher_ema_skipped(train_type, log_writter_SEGMENTATION)
 
     # print("Epoch {}: Loss_EMA = {}".format(epoch, lossesDICE_EMA.avg))
     # print("Epoch {}: Loss_EMA = {}".format(epoch, lossesDICE_EMA.avg), file=log_writter_SEGMENTATION)
@@ -1126,10 +1173,11 @@ def train_one_epoch_SEGMENTATION_SharedLocSeg(model, train_loader, optimizer, lo
 
     # if args.modelEMA == "True_Epoch" and train_type == 'uF': # Epoch based EMA update # ACTIVE
     # if args.modelEMA == "True_Epoch" and epoch > 36:
-    if args.modelEMA == "True_Epoch":
+    if teacher_ema_due(train_type):
         model_ema = ema_update_teacher_Seg(model, model_ema, momen, epoch, log_writter_SEGMENTATION)
-        print("[Check] Teacher Model Updated....")
-        print("[Check] Teacher Model Updated....", file=log_writter_SEGMENTATION)
+        log_teacher_ema(epoch, train_type, current_ema_momentum(epoch, fixed=0.90 if args.opt in ('sgd', 'adamw_and_sgd') else 0.80), log_writter_SEGMENTATION)
+    elif args.modelEMA == "True_Epoch":
+        log_teacher_ema_skipped(train_type, log_writter_SEGMENTATION)
 
     # print("Epoch {}: Loss_EMA = {}".format(epoch, lossesDICE_EMA.avg))
     # print("Epoch {}: Loss_EMA = {}".format(epoch, lossesDICE_EMA.avg), file=log_writter_SEGMENTATION)
@@ -1599,8 +1647,11 @@ def train_CLASSIFICATION(train_loader, model, criterion, optimizer, epoch, args,
                 log_writter_CLASSIFICATION.flush()
         del images, target, features_cons_ema, features_cons, out_classifierHead, output
     
-    if args.modelEMA == "True_Epoch": # Epoch based EMA update # ACTIVE
+    if teacher_ema_due(train_type):
         model_ema = ema_update_teacher(model, model_ema, momen, epoch)
+        log_teacher_ema(epoch, train_type, current_ema_momentum(epoch, fixed=0.80), log_writter_CLASSIFICATION)
+    elif args.modelEMA == "True_Epoch":
+        log_teacher_ema_skipped(train_type, log_writter_CLASSIFICATION)
 
     return losses.avg, model_ema
 
@@ -3460,10 +3511,13 @@ def main(args):
         momentum_schedule = cosine_scheduler(0.8, 1, Num_EPOCH_Iterative_Steps_MomentumSchduler, 1) # Localization EMA Update Epoch-wise
         momentum_schedule_SEG = cosine_scheduler(0.5, 1, Num_EPOCH_Iterative_Steps_MomentumSchduler, 1) # Segmentaiton EMA Update Epoch-wise
         # momentum_schedule = cosine_scheduler(0.9, 1, args.total_epochs, 1)
-        print("[Model Info] EMA Epoch-wise Update.")
+        # cosine reads this 0.8-to-1 schedule for classification, localization, and segmentation.
+        args.ema_momentum_schedule = momentum_schedule
+        print("[Model Info] EMA Epoch-wise Update. teacher_update={} ema_momentum={}.".format(args.teacher_update, args.ema_momentum))
     else:
         momentum_schedule = None
         momentum_schedule_SEG = None
+        args.ema_momentum_schedule = None
 
     # ## DEBUG ################:
     # print("Debug -- Layers Parameter 1 to ...")
