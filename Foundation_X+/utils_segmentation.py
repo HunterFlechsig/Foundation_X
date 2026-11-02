@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 import sys
@@ -99,8 +100,13 @@ def save_model(model, optimizer, log_writter_SEGMENTATION, epoch, save_file, mod
             'optimizer': optimizer.state_dict(),
             'epoch': epoch,
         }
-    torch.save(state, save_file)
+    _atomic_torch_save(state, save_file)
     del state
+
+def _atomic_torch_save(state, save_file):
+    tmp = save_file + '.tmp'
+    torch.save(state, tmp)
+    os.replace(tmp, save_file)
 
 def save_model2(model, optimizerA, optimizerB,  log_writter_SEGMENTATION, epoch, save_file, model_ema=None):
     # optimizerA == ADAMW
@@ -121,7 +127,7 @@ def save_model2(model, optimizerA, optimizerB,  log_writter_SEGMENTATION, epoch,
             'optimizer_sgd': optimizerB.state_dict(),
             'epoch': epoch,
         }
-    torch.save(state, save_file)
+    _atomic_torch_save(state, save_file)
     del state
 
 

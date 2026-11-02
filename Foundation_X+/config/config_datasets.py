@@ -82,9 +82,9 @@ DATASETS_CONFIG = {
     "loc_chestxdet_testList": "/data/jliang12/nuislam/data_files_splits/chestxdetdataset/ChestX_det_test_NAD_v2.json",
 
     "seg_chestxdet_trainRoot": DATASET_DIR + "ChestX-Det/train/",
-    "seg_chestxdet_trainList": DATASET_DIR + "ChestX-Det/train_binary_mask/",
+    "seg_chestxdet_trainList": "/data/jliang12/nuislam/ChestX-Det/train_binary_mask/",
     "seg_chestxdet_testRoot": DATASET_DIR + "ChestX-Det/test/",
-    "seg_chestxdet_testList": DATASET_DIR + "ChestX-Det/test_binary_mask/",
+    "seg_chestxdet_testList": "/data/jliang12/nuislam/ChestX-Det/test_binary_mask/",
 
     # RSNAPneumonia - Classification - Localization
     "cls_rsnapneumonia_root": DATASET_DIR + "rsna-pneumonia-detection-challenge/stage_2_train_images_png/",
