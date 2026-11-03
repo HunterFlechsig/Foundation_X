@@ -20,15 +20,15 @@ DATASETS_CONFIG = {
     "cls_chexpert_testList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/CheXpert_test_official.csv",
 
     # VINDrCXR - Classification
-    "cls_vindrcxr_root": DATASET_DIR + "VinDr-CXR/physionet.org/files/vindr-cxr/1.0.0/",
+    "cls_vindrcxr_root": "/data/jliang12/jpang12/dataset/VinDr-CXR/physionet.org/files/vindr-cxr/1.0.0/",
     "cls_vindrcxr_trainList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/VinDrCXR_train_pe_global_one.txt",
     "cls_vindrcxr_valList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/VinDrCXR_test_pe_global_one.txt",
     "cls_vindrcxr_testList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/VinDrCXR_test_pe_global_one.txt",
 
     "loc_vindrcxr_trainTag": "vindrcxr_train",
     "loc_vindrcxr_testTag": "vindrcxr_test",
-    "loc_vindrcxr_trainRoot": DATASET_DIR + "VinDr-CXR/physionet.org/files/vindr-cxr/1.0.0/train_jpeg",
-    "loc_vindrcxr_testRoot": DATASET_DIR + "VinDr-CXR/physionet.org/files/vindr-cxr/1.0.0/test_jpeg",
+    "loc_vindrcxr_trainRoot": "/data/jliang12/jpang12/dataset/VinDr-CXR/physionet.org/files/vindr-cxr/1.0.0/train_jpeg",
+    "loc_vindrcxr_testRoot": "/data/jliang12/jpang12/dataset/VinDr-CXR/physionet.org/files/vindr-cxr/1.0.0/test_jpeg",
     "loc_vindrcxr_trainList": "/data/jliang12/nuislam/FoundationX_localization_bbox_annotation_collections/VinDrCXR_Kaggle_14Diseases/VinDrCXR_Kaggle_14Diseases_TRAIN_modified_wbf.json",
     "loc_vindrcxr_testList": "/data/jliang12/nuislam/FoundationX_localization_bbox_annotation_collections/VinDrCXR_Kaggle_14Diseases/VinDrCXR_Kaggle_14Diseases_TEST_modified_wbf.json",
 
