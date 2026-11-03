@@ -46,15 +46,15 @@ DATASETS_CONFIG = {
 
     # TBX11K - Classification - Localization
     "cls_tbx11k_root": "/data/jliang12/jpang12/dataset/tbx11k/TBX11K/",
-    "cls_tbx11k_trainList": "lists/TBX11K_train.txt",
+    "cls_tbx11k_trainList": "/data/jliang12/nuislam/data_files_splits/tbx11k/TBX11K_train.txt",
     "cls_tbx11k_valList": None,
-    "cls_tbx11k_testList": "lists/TBX11K_val.txt",
+    "cls_tbx11k_testList": "/data/jliang12/nuislam/data_files_splits/tbx11k/TBX11K_val.txt",
 
     "loc_tbx11k_trainTag": "tbx11k_catagnostic_train",
     "loc_tbx11k_testTag": "tbx11k_catagnostic_test",
     "loc_tbx11k_root": "/data/jliang12/jpang12/dataset/tbx11k/TBX11K/imgs",
-    "loc_tbx11k_trainList": "/data/jliang12/jpang12/dataset/tbx11k/TBX11K/annotations/all_train_2.json",
-    "loc_tbx11k_testList": "/data/jliang12/jpang12/dataset/tbx11k/TBX11K/annotations/all_val_2.json",
+    "loc_tbx11k_trainList": "/data/jliang12/nuislam/data_files_splits/tbx11k/all_train_2.json",
+    "loc_tbx11k_testList": "/data/jliang12/nuislam/data_files_splits/tbx11k/all_val_2.json",
 
     # NODE21 - Classification - Localization
     "cls_node21_root": DATASET_DIR + "NODE21/",

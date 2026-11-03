@@ -2090,7 +2090,8 @@ class TBX11KDataset(Dataset): ## Need to FIX
     self.img_label = []
     self.augment = augment
 
-    with open(images_path+file_path, "r") as fileDescriptor:
+    list_path = file_path if os.path.isabs(file_path) else images_path + file_path
+    with open(list_path, "r") as fileDescriptor:
       line = True
       while line:
         line = fileDescriptor.readline()
