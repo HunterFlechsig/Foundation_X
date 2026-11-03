@@ -14,7 +14,7 @@ DATASETS_CONFIG = {
     "loc_nih_test2List": "/data/jliang12/shared/dataset/NIH_Localization/nih_bbox_coco_1024_basedOnChestX-Det.json",
 
     # CheXpert - Classification
-    "cls_chexpert_root": DATASET_DIR,
+    "cls_chexpert_root": "/data/jliang12/jpang12/dataset/CheXpert-v1.0/",
     "cls_chexpert_trainList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/CheXpert-v1.0_train.csv",
     "cls_chexpert_valList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/CheXpert-v1.0_valid.csv",
     "cls_chexpert_testList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/CheXpert_test_official.csv",
