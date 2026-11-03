@@ -796,8 +796,8 @@ def build(image_set, args):
         "node21_noduleDataset_test": (DATASETS_CONFIG['loc_node21_root'], DATASETS_CONFIG['loc_node21_testList']),
 
         "tbx11k_catagnostic_train": (DATASETS_CONFIG['loc_tbx11k_root'], DATASETS_CONFIG['loc_tbx11k_trainList']),
-        "tbx11k_catagnostic_train_A": (DATASETS_CONFIG['loc_tbx11k_root'], '/scratch/jliang12/data/tbx11k/tbx11k/TBX11K/annotations/TBX11K_train_A.json'),
-        "tbx11k_catagnostic_train_B": (DATASETS_CONFIG['loc_tbx11k_root'], '/scratch/jliang12/data/tbx11k/tbx11k/TBX11K/annotations/TBX11K_train_B.json'),
+        "tbx11k_catagnostic_train_A": (DATASETS_CONFIG['loc_tbx11k_root'], '/data/jliang12/jpang12/dataset/tbx11k/TBX11K/annotations/TBX11K_train_A.json'),
+        "tbx11k_catagnostic_train_B": (DATASETS_CONFIG['loc_tbx11k_root'], '/data/jliang12/jpang12/dataset/tbx11k/TBX11K/annotations/TBX11K_train_B.json'),
         "tbx11k_catagnostic_test": (DATASETS_CONFIG['loc_tbx11k_root'], DATASETS_CONFIG['loc_tbx11k_testList']),
         
         "vindrmammo_train":(root, "/annotations_coco/VinDr-mammo_training.json"),
