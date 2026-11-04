@@ -5,6 +5,7 @@ Each figure is one evaluated dataset and task. The x-axis is the cycle.
 Solid blue and solid red are the student and teacher on cycles that trained
 that exact task. Dashed green and dashed orange connect every cycle for the
 student and teacher, so each dashed curve passes through its solid curve.
+The highest student and teacher scores are listed on the figure.
 
 Also writes best_epoch_metrics.csv. Student and teacher best scores are
 chosen separately. The primary score is classification AUC, localization
@@ -296,7 +297,7 @@ def order_note(tested, order):
     following = order_after_focused(tested, order)
     if not following:
         return "This run trains only this task."
-    return "After each focused point, the next points train: {}".format(following.replace("; ", " → "))
+    return "After each focused cycle, training continues with: {}".format(following.replace("; ", " → "))
 
 
 def plot_curve(ax, points, n_tasks, color, linestyle, label, marker=None, linewidth=2.0):
@@ -355,9 +356,8 @@ def plot_task(rows, tested, n_tasks, x_max, order, out_path):
     fig, ax = plt.subplots(figsize=(10, 6.5))
     plot_curve(ax, by_model["student"], n_tasks, STUDENT_DASHED, "--", "Student focused and unfocused")
     plot_curve(ax, by_model["teacher"], n_tasks, TEACHER_DASHED, "--", "Teacher focused and unfocused")
-    plot_training_markers(ax, task_rows, n_tasks, order)
-    plot_curve(ax, focused["student"], n_tasks, STUDENT_SOLID, "-", "Student focused", marker="o")
-    plot_curve(ax, focused["teacher"], n_tasks, TEACHER_SOLID, "-", "Teacher focused", marker="o")
+    plot_curve(ax, focused["student"], n_tasks, STUDENT_SOLID, "-", "Student focused")
+    plot_curve(ax, focused["teacher"], n_tasks, TEACHER_SOLID, "-", "Teacher focused")
 
     task_type, dataset = tested
     ax.set_title("{} {}".format(dataset, task_type))
@@ -371,8 +371,13 @@ def plot_task(rows, tested, n_tasks, x_max, order, out_path):
     ax.grid(True, alpha=0.3)
     ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
     note = textwrap.fill(order_note(tested, order), width=110)
-    fig.tight_layout(rect=(0, 0.08, 1, 1))
-    fig.text(0.01, 0.01, note, fontsize=8, va="bottom")
+    highest = "Highest student: {}    Highest teacher: {}".format(
+        best_text(by_model["student"], n_tasks),
+        best_text(by_model["teacher"], n_tasks),
+    )
+    fig.tight_layout(rect=(0, 0.10, 1, 1))
+    fig.text(0.01, 0.035, note, fontsize=8, va="bottom")
+    fig.text(0.01, 0.01, highest, fontsize=9, va="bottom")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -382,6 +387,13 @@ def best_score(points):
     if not points:
         return None
     return max(points, key=lambda row: (row["score"], -row["epoch"]))
+
+
+def best_text(points, n_tasks):
+    best = best_score(points)
+    if best is None:
+        return "n/a"
+    return "{:.3f} at cycle {}".format(best["score"], cycle_number(best["epoch"], n_tasks))
 
 
 def join_numbers(values):
@@ -513,7 +525,14 @@ def draw_overview_panel(ax, task_rows, n_tasks, x_max, task_type, dataset, show_
         best = best_score(pool)
         if best is not None:
             ax.axhline(best["score"], color=line_color, linestyle=linestyle, linewidth=1.0, zorder=1)
-    ax.set_title("{} Cross-Dataset Learning".format(DISPLAY_DATASET.get(dataset, dataset)), fontsize=10)
+    ax.set_title(
+        "{}\nstudent {}    teacher {}".format(
+            DISPLAY_DATASET.get(dataset, dataset),
+            best_text(by_model["student"], n_tasks),
+            best_text(by_model["teacher"], n_tasks),
+        ),
+        fontsize=9,
+    )
     ax.set_xlim(1, x_max)
     if x_max <= 16:
         ax.xaxis.set_major_locator(MultipleLocator(1))
@@ -536,7 +555,7 @@ def plot_overview(rows, n_tasks, x_max, out_path):
         by_tested[row["tested"]].append(row)
     ncols = max(len(datasets) for _task, datasets in groups)
     nrows = len(groups)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(3.7 * ncols, 2.9 * nrows), squeeze=False)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4.2 * ncols, 3.4 * nrows), squeeze=False)
     for row_index, (task_type, datasets) in enumerate(groups):
         for col_index in range(ncols):
             ax = axes[row_index][col_index]
@@ -565,8 +584,8 @@ def plot_overview(rows, n_tasks, x_max, out_path):
         plt.Line2D([0], [0], color="0.35", linewidth=2.4, linestyle="--", label="Teacher focused"),
         plt.Line2D([0], [0], color="0.35", linewidth=1.0, linestyle=":", label="Teacher best focused"),
     ]
-    fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, fontsize=8, bbox_to_anchor=(0.5, -0.02))
-    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, fontsize=8, bbox_to_anchor=(0.5, -0.01))
+    fig.tight_layout(rect=(0, 0.14, 1, 1))
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
