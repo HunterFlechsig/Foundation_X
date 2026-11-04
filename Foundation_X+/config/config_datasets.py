@@ -57,14 +57,14 @@ DATASETS_CONFIG = {
     "loc_tbx11k_testList": "/data/jliang12/nuislam/data_files_splits/tbx11k/all_val_2.json",
 
     # NODE21 - Classification - Localization
-    "cls_node21_root": DATASET_DIR + "NODE21/",
+    "cls_node21_root": "/data/jliang12/shared/dataset/NODE21/",
     "cls_node21_trainList": "/data/jliang12/nuislam/data_files_splits/node21_dataset/train.txt",
     "cls_node21_valList": None,
     "cls_node21_testList": "/data/jliang12/nuislam/data_files_splits/node21_dataset/test.txt",
 
     "loc_node21_trainTag": "node21_noduleDataset_train",
     "loc_node21_testTag": "node21_noduleDataset_test",
-    "loc_node21_root": DATASET_DIR + "NODE21/png_images",
+    "loc_node21_root": "/data/jliang12/shared/dataset/NODE21/png_images",
     "loc_node21_trainList": "/data/jliang12/nuislam/data_files_splits/node21_dataset/Node21_Nodule_Bbox_NAD_train_3.json",
     "loc_node21_testList": "/data/jliang12/nuislam/data_files_splits/node21_dataset/Node21_Nodule_Bbox_NAD_test_3.json",
 
