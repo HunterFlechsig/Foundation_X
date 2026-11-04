@@ -39,7 +39,7 @@ DATASETS_CONFIG = {
     "cls_shenzencxr_testList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/ShenzenCXR_test_data.txt",
 
     # Mimic-CXR - Classification
-    "cls_mimiccxr_root": DATASET_DIR + "MIMIC_jpeg/physionet.org/files/mimic-cxr-jpg/2.0.0/",
+    "cls_mimiccxr_root": "/data/jliang12/jpang12/dataset/MIMIC_jpeg/physionet.org/files/mimic-cxr-jpg/2.0.0/",
     "cls_mimiccxr_trainList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/mimic-cxr-2.0.0-train.csv",
     "cls_mimiccxr_valList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/mimic-cxr-2.0.0-validate.csv",
     "cls_mimiccxr_testList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/mimic-cxr-2.0.0-test.csv",
