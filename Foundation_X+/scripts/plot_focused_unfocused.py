@@ -302,7 +302,7 @@ def order_note(tested, order):
     return "After each focused cycle, training continues with: {}".format(following.replace("; ", " → "))
 
 
-def plot_curve(ax, points, n_tasks, color, linestyle, label, marker=None, linewidth=2.0):
+def plot_curve(ax, points, n_tasks, color, linestyle, label, marker=None, linewidth=2.0, zorder=None):
     ordered = sorted(points, key=lambda row: row["epoch"])
     if not ordered:
         return
@@ -312,7 +312,7 @@ def plot_curve(ax, points, n_tasks, color, linestyle, label, marker=None, linewi
         "color": color,
         "linestyle": linestyle,
         "linewidth": linewidth,
-        "zorder": 4 if linewidth >= 2.0 else 2,
+        "zorder": (4 if linewidth >= 2.0 else 2) if zorder is None else zorder,
     }
     if marker:
         style["marker"] = marker

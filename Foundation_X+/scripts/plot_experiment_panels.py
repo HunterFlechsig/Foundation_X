@@ -113,22 +113,22 @@ def panels_for(order, focus):
 def draw_focused(ax, rows, focus, n_tasks):
     curves.plot_curve(
         ax, select_rows(rows, focus, focus, "student"), n_tasks,
-        curves.STUDENT_SOLID, "-", None, linewidth=2.3,
+        curves.STUDENT_SOLID, "-", None, linewidth=1.15, zorder=2,
     )
     curves.plot_curve(
         ax, select_rows(rows, focus, focus, "teacher"), n_tasks,
-        curves.TEACHER_SOLID, "-", None, linewidth=2.3,
+        curves.TEACHER_SOLID, "-", None, linewidth=1.15, zorder=2,
     )
 
 
 def draw_unfocused(ax, rows, focus, other, n_tasks, color):
     curves.plot_curve(
         ax, select_rows(rows, focus, other, "student"), n_tasks,
-        color, "-", None, linewidth=1.7,
+        color, "-", None, linewidth=1.7, zorder=4,
     )
     curves.plot_curve(
         ax, select_rows(rows, focus, other, "teacher"), n_tasks,
-        lighten(color), (0, (4, 1.5)), None, linewidth=1.2,
+        lighten(color), (0, (4, 1.5)), None, linewidth=1.25, zorder=4,
     )
 
 
@@ -179,17 +179,17 @@ def plot_focus(rows, focus, order, n_tasks, x_max, run, out_path):
     color_of = {}
     seen_datasets = []
     for ax, (panel_type, others), show_ylabel in zip(axes[0], panels, [True] + [False] * (len(panels) - 1)):
+        draw_focused(ax, rows, focus, n_tasks)
         for other in others:
             color = dataset_color(other[1], color_of)
             if other[1] not in seen_datasets:
                 seen_datasets.append(other[1])
             draw_unfocused(ax, rows, focus, other, n_tasks, color)
-        draw_focused(ax, rows, focus, n_tasks)
         style_panel(ax, PANEL_TITLE[panel_type], ylabel, x_max, limits, show_ylabel)
 
     legend = [
-        plt.Line2D([0], [0], color=curves.STUDENT_SOLID, linewidth=2.3, label="Focused student"),
-        plt.Line2D([0], [0], color=curves.TEACHER_SOLID, linewidth=2.3, label="Focused teacher"),
+        plt.Line2D([0], [0], color=curves.STUDENT_SOLID, linewidth=1.15, label="Focused student"),
+        plt.Line2D([0], [0], color=curves.TEACHER_SOLID, linewidth=1.15, label="Focused teacher"),
     ]
     for dataset in seen_datasets:
         legend.append(plt.Line2D(
