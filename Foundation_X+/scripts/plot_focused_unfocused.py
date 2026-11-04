@@ -63,6 +63,8 @@ RUN_CYCLE_LENGTH = {
 
 STUDENT_SOLID = "#1f4bff"
 TEACHER_SOLID = "#d62728"
+STUDENT_UNFOCUSED = "#9aaeff"
+TEACHER_UNFOCUSED = "#ee9b9c"
 STUDENT_DASHED = "#2ca02c"
 TEACHER_DASHED = "#ff7f0e"
 TASK_MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*", "h", "<", ">"]
@@ -354,8 +356,8 @@ def plot_task(rows, tested, n_tasks, x_max, order, out_path):
             focused[row["model"]].append(row)
 
     fig, ax = plt.subplots(figsize=(10, 6.5))
-    plot_curve(ax, by_model["student"], n_tasks, STUDENT_DASHED, "--", "Student focused and unfocused")
-    plot_curve(ax, by_model["teacher"], n_tasks, TEACHER_DASHED, "--", "Teacher focused and unfocused")
+    plot_curve(ax, by_model["student"], n_tasks, STUDENT_UNFOCUSED, "--", "Student focused and unfocused", linewidth=1.4)
+    plot_curve(ax, by_model["teacher"], n_tasks, TEACHER_UNFOCUSED, "--", "Teacher focused and unfocused", linewidth=1.4)
     plot_curve(ax, focused["student"], n_tasks, STUDENT_SOLID, "-", "Student focused")
     plot_curve(ax, focused["teacher"], n_tasks, TEACHER_SOLID, "-", "Teacher focused")
 

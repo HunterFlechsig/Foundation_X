@@ -103,12 +103,14 @@ def plot_pair(rows, focus, other, n_tasks, x_max, out_path):
         "{} teacher focused".format(focus_name),
     )
     curves.plot_curve(
-        ax, other_rows["student"], n_tasks, curves.STUDENT_DASHED, "--",
+        ax, other_rows["student"], n_tasks, curves.STUDENT_UNFOCUSED, "--",
         "Student after {}".format(other_name),
+        linewidth=1.4,
     )
     curves.plot_curve(
-        ax, other_rows["teacher"], n_tasks, curves.TEACHER_DASHED, "--",
+        ax, other_rows["teacher"], n_tasks, curves.TEACHER_UNFOCUSED, "--",
         "Teacher after {}".format(other_name),
+        linewidth=1.4,
     )
 
     scores = [
