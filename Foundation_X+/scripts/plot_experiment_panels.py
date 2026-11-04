@@ -4,13 +4,14 @@
 The experiment directory is a folder such as part_2_v4_norm. Each task folder
 inside it is read from export_csvFile.csv. For CANDID-PTX localization in a
 run that trains all three tasks, the figure has three panels. Every panel
-repeats the focused student and teacher lines. The classification panel adds
-one unfocused pair per classification dataset, the localization panel adds one
-pair per other localization dataset, and the segmentation panel adds one pair
-per segmentation dataset.
+repeats the focused student and teacher lines. Each other dataset trained in
+that panel gets its own unfocused student and teacher lines. Those lines are
+still the focused task's score, measured on the cycles when that other dataset
+was trained.
 
-Each dataset has its own color. The student is a solid line and the teacher is
-a lighter, thinner line of that color. Focused lines stay solid blue and red.
+Focused lines are thin and solid. Each dataset has its own color, drawn on top
+of the focused lines. The student is solid and the teacher is a lighter dashed
+line of the same color.
 
 Figures are written to <experiment>/analysis/panels/<task folder>/.
 """
@@ -41,12 +42,6 @@ def _load(name):
 curves = _load("plot_focused_unfocused.py")
 pairs = _load("plot_experiment_pairs.py")
 
-TASK_TYPES = ("classification", "localization", "segmentation")
-PANEL_TITLE = {
-    "classification": "After classification",
-    "localization": "After localization",
-    "segmentation": "After segmentation",
-}
 DATASET_COLOR = {
     "CANDID-PTX": "#4C78A8",
     "RSNApneumonia": "#54A24B",
@@ -54,6 +49,12 @@ DATASET_COLOR = {
     "SIIM-ACRpneumothorax": "#B279A2",
 }
 FALLBACK_COLORS = ["#E45756", "#72B7B2", "#FF9DA6", "#9D755D", "#BAB0AC", "#B6992D"]
+TASK_TYPES = ("classification", "localization", "segmentation")
+PANEL_TITLE = {
+    "classification": "After classification",
+    "localization": "After localization",
+    "segmentation": "After segmentation",
+}
 RUN_TITLE = {
     "cls": "Classification only",
     "loc": "Localization only",
@@ -70,7 +71,7 @@ RUN_TITLE = {
 }
 
 
-def lighten(hex_color, amount=0.55):
+def lighten(hex_color, amount=0.45):
     text = hex_color.lstrip("#")
     channels = [int(text[index:index + 2], 16) for index in (0, 2, 4)]
     mixed = [int(round(channel + (255 - channel) * amount)) for channel in channels]
@@ -122,13 +123,14 @@ def draw_focused(ax, rows, focus, n_tasks):
 
 
 def draw_unfocused(ax, rows, focus, other, n_tasks, color):
+    """Focused-task score on the cycles when this other dataset was trained."""
     curves.plot_curve(
         ax, select_rows(rows, focus, other, "student"), n_tasks,
         color, "-", None, linewidth=1.7, zorder=4,
     )
     curves.plot_curve(
         ax, select_rows(rows, focus, other, "teacher"), n_tasks,
-        lighten(color), (0, (4, 1.5)), None, linewidth=1.25, zorder=4,
+        lighten(color), "--", None, linewidth=1.35, zorder=4,
     )
 
 
@@ -148,21 +150,22 @@ def style_panel(ax, title, ylabel, x_max, limits, show_ylabel):
     ax.spines["right"].set_visible(False)
 
 
-def panel_has_scores(rows, focus, others):
+def others_with_scores(rows, focus, others):
+    kept = []
     for other in others:
         if select_rows(rows, focus, other, "student") or select_rows(rows, focus, other, "teacher"):
-            return True
-    return False
+            kept.append(other)
+    return kept
 
 
 def plot_focus(rows, focus, order, n_tasks, x_max, run, out_path):
     if not select_rows(rows, focus, focus, "student") and not select_rows(rows, focus, focus, "teacher"):
         return False
-    panels = [
-        (task_type, others)
-        for task_type, others in panels_for(order, focus)
-        if panel_has_scores(rows, focus, others)
-    ]
+    panels = []
+    for panel_type, others in panels_for(order, focus):
+        kept = others_with_scores(rows, focus, others)
+        if kept:
+            panels.append((panel_type, kept))
     if not panels:
         return False
     task_type = focus[0]
@@ -194,15 +197,11 @@ def plot_focus(rows, focus, order, n_tasks, x_max, run, out_path):
     for dataset in seen_datasets:
         legend.append(plt.Line2D(
             [0], [0], color=dataset_color(dataset, color_of), linewidth=1.7,
-            label=display_dataset(dataset),
+            label="After {}".format(display_dataset(dataset)),
         ))
-    legend.extend([
-        plt.Line2D([0], [0], color="black", linewidth=1.7, label="Unfocused student"),
-        plt.Line2D(
-            [0], [0], color="0.55", linewidth=1.2, linestyle=(0, (4, 1.5)),
-            label="Unfocused teacher",
-        ),
-    ])
+    legend.append(plt.Line2D(
+        [0], [0], color="0.45", linewidth=1.35, linestyle="--", label="Unfocused teacher",
+    ))
     fig.legend(
         handles=legend, loc="lower center", ncol=min(len(legend), 4),
         frameon=False, fontsize=9, bbox_to_anchor=(0.5, 0.06),
