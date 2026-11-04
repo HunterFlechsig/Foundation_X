@@ -33,7 +33,7 @@ DATASETS_CONFIG = {
     "loc_vindrcxr_testList": "/data/jliang12/nuislam/FoundationX_localization_bbox_annotation_collections/VinDrCXR_Kaggle_14Diseases/VinDrCXR_Kaggle_14Diseases_TEST_modified_wbf.json",
 
     # ShenzenCXR - Classification
-    "cls_shenzencxr_root": DATASET_DIR + "ShenzhenHospitalXray/ChinaSet_AllFiles/CXR_png/",
+    "cls_shenzencxr_root": "/data/jliang12/jpang12/dataset/ShenzhenHospitalXray/ChinaSet_AllFiles/CXR_png/",
     "cls_shenzencxr_trainList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/ShenzenCXR_train_data.txt",
     "cls_shenzencxr_valList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/ShenzenCXR_valid_data.txt",
     "cls_shenzencxr_testList": "/data/jliang12/nuislam/data_files_splits/ark6_classificationTask/ShenzenCXR_test_data.txt",
