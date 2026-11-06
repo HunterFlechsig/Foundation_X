@@ -13,7 +13,7 @@
 
 # (m) Foundation X+ classification, localization, and segmentation on every
 # dataset-task pair listed in the Foundation X+ README.
-# 200 cycles means each of the 20 tasks is trained 200 times.
+# 100 cycles means each of the 20 tasks is trained 100 times.
 # The trainer starts at epoch 1 and stops before total_epochs.
 # Launch: bash scripts/part_3/m_all.sh <experiment> [every_pass|once_per_epoch] [fixed|cosine]
 # Rerun the same command to resume from the latest checkpoint in that folder.
@@ -67,7 +67,7 @@ SERVER=SOL
 EMAMODE=True_Epoch
 
 cyclictask=chexpertCLS_nihchestxray14CLS_vindrcxrCLS_nihshenzenCLS_mimic2CLS_tbx11kCLS_node21CLS_candidptxCLS_rsnapneumoniaCLS_chestxdetCLS_siimacrCLS_tbx11kLOC_node21LOC_candidptxLOC_rsnapneumoniaLOC_chestxdetLOC_siimacrLOC_candidptxSEG_chestxdetSEG_siimacrSEG
-CYCLES=200
+CYCLES=100
 IFS='_' read -ra TASKS <<< "$cyclictask"
 total_epochs=$(( ${#TASKS[@]} * CYCLES + 1 ))
 

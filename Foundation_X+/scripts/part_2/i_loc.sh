@@ -12,7 +12,7 @@
 #SBATCH --mail-user=hflechsi@asu.edu
 
 # Part 2: candidptxLOC_rsnapneumoniaLOC_chestxdetLOC_siimacrLOC
-# 200 cycles means each selected task is trained 200 times.
+# 100 cycles means each selected task is trained 100 times.
 # The trainer starts at epoch 1 and stops before total_epochs.
 # Launch: bash <this script> <experiment> [every_pass|once_per_epoch] [fixed|cosine]
 
@@ -65,7 +65,7 @@ SERVER=SOL
 EMAMODE=True_Epoch
 
 cyclictask=candidptxLOC_rsnapneumoniaLOC_chestxdetLOC_siimacrLOC
-CYCLES=200
+CYCLES=100
 IFS='_' read -ra TASKS <<< "$cyclictask"
 total_epochs=$(( ${#TASKS[@]} * CYCLES + 1 ))
 
