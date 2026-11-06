@@ -1,8 +1,14 @@
+import atexit
 import os
+import threading
+import traceback
 import torch
 import numpy as np
 import sys
 from sklearn.metrics import roc_auc_score
+
+_save_thread = None
+_save_lock = threading.Lock()
 
 class LARS(torch.optim.Optimizer):
     """
@@ -85,6 +91,49 @@ def accuracy(output, target, topk=(1,)):
         #print(target, pred, batch_size, correct, res)
         return res
 
+def _clone_to_cpu(value):
+    """Copy tensors out of the live model before the next step overwrites them."""
+    if torch.is_tensor(value):
+        return value.detach().to("cpu", copy=True)
+    if isinstance(value, dict):
+        return {key: _clone_to_cpu(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_clone_to_cpu(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_clone_to_cpu(item) for item in value)
+    return value
+
+
+def finish_pending_save():
+    """Wait until the checkpoint thread has renamed its file into place."""
+    with _save_lock:
+        thread = _save_thread
+    if thread is not None:
+        thread.join()
+
+
+def _schedule_checkpoint_save(state, save_file):
+    """Clone to CPU on this thread, then write the file in the background."""
+    global _save_thread
+    finish_pending_save()
+    cpu_state = _clone_to_cpu(state)
+
+    def _write():
+        try:
+            _atomic_torch_save(cpu_state, save_file)
+            print("==> Checkpoint written:", save_file)
+        except Exception:
+            traceback.print_exc()
+
+    thread = threading.Thread(target=_write, name="checkpoint-save")
+    with _save_lock:
+        _save_thread = thread
+    thread.start()
+
+
+atexit.register(finish_pending_save)
+
+
 def save_model(model, optimizer, log_writter_SEGMENTATION, epoch, save_file, model_ema=None):
     print('==> Saving...',file=log_writter_SEGMENTATION)
     if model_ema is not None:
@@ -100,7 +149,7 @@ def save_model(model, optimizer, log_writter_SEGMENTATION, epoch, save_file, mod
             'optimizer': optimizer.state_dict(),
             'epoch': epoch,
         }
-    _atomic_torch_save(state, save_file)
+    _schedule_checkpoint_save(state, save_file)
     del state
 
 def _atomic_torch_save(state, save_file):
@@ -127,7 +176,7 @@ def save_model2(model, optimizerA, optimizerB,  log_writter_SEGMENTATION, epoch,
             'optimizer_sgd': optimizerB.state_dict(),
             'epoch': epoch,
         }
-    _atomic_torch_save(state, save_file)
+    _schedule_checkpoint_save(state, save_file)
     del state
 
 

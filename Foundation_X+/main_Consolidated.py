@@ -38,7 +38,7 @@ from engine import evaluate, train_one_epoch, test, test_NAD
 from sklearn.metrics import roc_auc_score, accuracy_score
 from torchmetrics.functional.classification import multilabel_accuracy
 # Segmentation from Jiaxuan
-from utils_segmentation import load_popar_weight, AverageMeter, save_model, save_model2, dice_score, mean_dice_coef, torch_dice_coef_loss, exp_lr_scheduler_with_warmup, step_decay, load_swin_pretrained
+from utils_segmentation import load_popar_weight, AverageMeter, save_model, save_model2, finish_pending_save, dice_score, mean_dice_coef, torch_dice_coef_loss, exp_lr_scheduler_with_warmup, step_decay, load_swin_pretrained
 from datasets_medical import build_transform_segmentation, dataloader_return, PXSDataset, MontgomeryDataset, JSRTClavicleDataset, JSRTHeartDataset,JSRTLungDataset, VinDrRibCXRDataset, ChestXDetDataset, JSRTLungDataset, VindrCXRHeartDataset
 from timm.utils import NativeScaler, ModelEma
 from models.load_weights_model import find_latest_saved_checkpoint, load_weights, load_weights_resume, load_weights_resume2, load_weights_foundationX
@@ -131,6 +131,8 @@ def get_args_parser():
     parser.add_argument('--lockrelease', action='store_true')
     parser.add_argument('--debugOnlyTest', action='store_true')
     parser.add_argument('--IgnoreTest', action='store_true')
+    parser.add_argument('--train-only', action='store_true',
+                        help='Train and save checkpoints. Skip evaluation and the parameter-name dump.')
     parser.add_argument('--saveAllModel', action='store_true')
     parser.add_argument('--tsneOut', action='store_true')
     parser.add_argument('--find_unused_params', action='store_true')
@@ -3541,6 +3543,8 @@ def main(args):
         print("[Model Info.] Optimizer AdamW:", optimizer_adamw)
         print("[Model Info.] Optimizer SGD:", optimizer_sgd)
     print("[Training Info.] Start_Epoch & Total_Epoch", args.start_epoch, args.total_epochs)
+    if args.train_only and args.taskcomponent == "foundation_x5_pretraining":
+        print("[Train-only] Evaluation and the parameter dump are off. Checkpoints still save every epoch.")
     print()
     MODEL_prev_parameters = {n: p.detach().cpu().numpy().tolist() for n, p in model.named_parameters() }
     if args.resume is not None:
@@ -3576,7 +3580,8 @@ def main(args):
     #     model._set_static_graph() # added by Nahid because of adding Classification & Segmentation component -- Forward/Backward pass issue
     for epoch in range(args.start_epoch, args.total_epochs):
         epoch_start_time = time.time()
-        MODEL_prev_parameters = {n: p.detach().cpu().numpy().tolist() for n, p in model.named_parameters() }
+        if not (args.train_only and args.taskcomponent == "foundation_x5_pretraining"):
+            MODEL_prev_parameters = {n: p.detach().cpu().numpy().tolist() for n, p in model.named_parameters() }
         # MODEL_prev_parameters_tgt_embed_0 = sum(model.transformer.tgt_embed[0].weight)
         # MODEL_prev_parameters_tgt_embed_1 = sum(model.transformer.tgt_embed[1].weight)
         # MODEL_prev_parameters_tgt_embed_2 = sum(model.transformer.tgt_embed[2].weight)
@@ -11253,16 +11258,17 @@ def main(args):
                         writer.writerow(fields)
                     did_model_train = True
 
-                torch.cuda.synchronize()
-                torch.cuda.empty_cache()
-                gc.collect()
+                if not args.train_only:
+                    torch.cuda.synchronize()
+                    torch.cuda.empty_cache()
+                    gc.collect()
 
             total_time = time.time() - start_time
             total_time_str = str(datetime.timedelta(seconds=int(total_time)))
             print(' -- Train time for Epoch {} - TaskHead {}: {}'.format(epoch, TaskHead_number, total_time_str), file=log_writter_DETECTION)
 
             ### Checking which of the layers have been updated/modified
-            if epoch < args.total_epochs:
+            if epoch < args.total_epochs and not args.train_only:
                 if not os.path.exists(args.output_dir + '/parameter_check'):
                     os.makedirs(args.output_dir + '/parameter_check')
                 with open(args.output_dir + '/parameter_check/' +  f'parameters_epoch_{epoch}.txt', 'w') as file:
@@ -11284,7 +11290,7 @@ def main(args):
             ### Testing Phase ###
             start_time = time.time()
 
-            if did_model_train == True:
+            if did_model_train == True and not args.train_only:
                 ### Test CLASSIFICATION ##
                 if 'chexpertCLS' in args.cyclictask:
                     datasetname__ = "CheXpert"
@@ -11527,6 +11533,7 @@ def main(args):
 
 
 
+    finish_pending_save()
     total_time = time.time() - start_time_ALL
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Total time {}'.format(total_time_str))
