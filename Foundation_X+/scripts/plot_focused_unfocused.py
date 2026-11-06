@@ -9,7 +9,7 @@ The highest student and teacher scores are listed on the figure.
 
 Also writes best_epoch_metrics.csv. Student and teacher best scores are
 chosen separately. The primary score is classification AUC, localization
-mAP50, or segmentation mean Dice.
+mAP40, or segmentation mean Dice.
 """
 
 import argparse
@@ -85,12 +85,12 @@ COLUMNS = [
 
 TASK_SCORE = {
     "classification": "auc",
-    "localization": "map50",
+    "localization": "map40",
     "segmentation": "dice",
 }
 TASK_YLABEL = {
     "classification": "AUC",
-    "localization": "mAP50",
+    "localization": "mAP40",
     "segmentation": "Mean Dice",
 }
 

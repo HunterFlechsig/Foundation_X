@@ -10,6 +10,10 @@ runs. One image per task. The first three score columns are the task by
 itself. The next three are all three tasks together. The last columns are
 the later all-three runs minus the original all-three run.
 
+When the original and normal CSVs are both present, one more image compares
+those two runs at every setting. Each delta is the normal score minus the
+original score.
+
 Defaults are Results/csv/part2.csv, part2_norm.csv, and part2_diff.csv.
 Scores are the best focused value in the CSV. Localization is mAP40.
 Images are written to Results/tables/.
@@ -310,6 +314,49 @@ def draw_sections(path, title, subtitle, footnote, sections):
     plt.close(fig)
 
 
+def pair_section(base, other, task, title, model):
+    base_label, _base_experiment, base_rows = base
+    other_label, _other_experiment, other_rows = other
+    setups = [("only", "Task only"), ("cls_loc", "Cls + Loc"), ("cls_loc_seg", "All three")]
+    if task == "segmentation":
+        setups = [("only", "Task only"), ("cls_loc_seg", "All three")]
+    headers = ["Dataset"]
+    groups = []
+    column = 1
+    for _key, label in setups:
+        headers.extend([base_label, other_label, "\u0394"])
+        groups.append((label, column, column + 2))
+        column += 3
+    body = []
+    for dataset in datasets_for(base_rows, task):
+        row = [DATASET_LABEL[dataset]]
+        for key, _label in setups:
+            run = only_run(task) if key == "only" else key
+            original = cell_value(base_rows, run, dataset, task, model)
+            normal = cell_value(other_rows, run, dataset, task, model)
+            delta = None if original is None or normal is None else normal - original
+            row.extend([format_score(original), format_score(normal), format_delta(delta)])
+        body.append(row)
+    return {
+        "title": title,
+        "headers": headers,
+        "rows": body,
+        "groups": groups,
+        "deltas": set(range(3, len(headers), 3)),
+    }
+
+
+def pair_epochs(base_rows, other_rows):
+    bits = []
+    for run, label in RUN_EPOCH:
+        bits.append("{} {}/{}".format(
+            label,
+            run_epoch(base_rows, run) or DASH,
+            run_epoch(other_rows, run) or DASH,
+        ))
+    return "Epochs, original / normal: {}.".format(", ".join(bits))
+
+
 def recipe_epochs(loaded, task):
     run = only_run(task)
     bits = []
@@ -372,6 +419,23 @@ def main():
                 [section],
             )
             written.append(out_path)
+
+    by_label = {item[0]: item for item in loaded}
+    if "Original" in by_label and "Normal" in by_label:
+        base = by_label["Original"]
+        normal = by_label["Normal"]
+        sections = [pair_section(base, normal, task, title, args.model) for task, title, _run in TASKS]
+        out_path = os.path.join(args.out, "part2_norm_minus_original_{}.png".format(args.model))
+        draw_sections(
+            out_path,
+            "Part 2 normal minus original \u2014 {}".format(args.model),
+            "{} minus {}. \u0394 is the normal run minus the original run. Best focused score.".format(
+                normal[1], base[1],
+            ),
+            pair_epochs(base[2], normal[2]),
+            sections,
+        )
+        written.append(out_path)
 
     for path in written:
         print(path)

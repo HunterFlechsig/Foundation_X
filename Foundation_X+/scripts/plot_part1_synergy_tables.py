@@ -4,8 +4,10 @@
 Reads the combined-results CSVs (one row per run, dataset, and task).
 Each CSV becomes one synergy table: CANDID-PTX trained alone, in each pair,
 and as classification + localization + segmentation. The normal and updated
-CSVs also produce the recipe comparison. Defaults are Results/csv/part1.csv
-(original runs), part1_norm.csv, and part1_diff.csv.
+CSVs also produce the recipe comparison. When the original and normal
+CSVs are both present, one image compares them at every setting. Each
+delta is the normal score minus the original score. Defaults are
+Results/csv/part1.csv (original runs), part1_norm.csv, and part1_diff.csv.
 
 Scores are the best focused value already stored in the CSV. Localization
 is mAP40. Images are written to Results/tables/.
@@ -13,6 +15,7 @@ is mAP40. Images are written to Results/tables/.
 
 import argparse
 import csv
+import importlib.util
 import os
 
 import matplotlib
@@ -141,6 +144,45 @@ def epoch_note(rows):
     return "Latest epoch written: {} alone; all three {}.".format(
         ", ".join(bits), all_done if all_done else DASH,
     )
+
+
+TASK_SETUPS = {
+    "classification": (("alone", "Alone"), ("cls_loc", "Cls + Loc"), ("cls_seg", "Cls + Seg"), ("all", "All three")),
+    "localization": (("alone", "Alone"), ("cls_loc", "Cls + Loc"), ("loc_seg", "Loc + Seg"), ("all", "All three")),
+    "segmentation": (("alone", "Alone"), ("cls_seg", "Cls + Seg"), ("loc_seg", "Loc + Seg"), ("all", "All three")),
+}
+
+
+def load_part2_tables():
+    path = os.path.join(SCRIPT_DIR, "plot_part2_synergy_tables.py")
+    spec = importlib.util.spec_from_file_location("plot_part2_synergy_tables", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def dicom_section(base_rows, normal_rows, task, title, model):
+    body = []
+    for setup, label in TASK_SETUPS[task]:
+        original = cell_value(base_rows, task, setup, model)
+        normal = cell_value(normal_rows, task, setup, model)
+        delta = None if original is None or normal is None else normal - original
+        original_epoch = epoch_done(base_rows, task, setup) or DASH
+        normal_epoch = epoch_done(normal_rows, task, setup) or DASH
+        body.append([
+            label,
+            format_score(original),
+            format_score(normal),
+            format_delta(delta),
+            "{} / {}".format(original_epoch, normal_epoch),
+        ])
+    return {
+        "title": title,
+        "headers": ["Setting", "Original", "Normal", "\u0394", "Epochs"],
+        "rows": body,
+        "groups": None,
+        "deltas": {3},
+    }
 
 
 def recipe_rows(left_rows, right_rows, model):
@@ -323,6 +365,25 @@ def main():
             "Best focused {} score. Classification is AUC, localization is mAP40, segmentation is mean Dice.".format(args.model),
             headers,
             recipe_rows(left_rows, _right_rows, args.model),
+        )
+        written.append(out_path)
+
+    if "Original" in by_label and "Normal" in by_label:
+        _base_path, base_experiment, _base_label, base_rows = by_label["Original"]
+        _normal_path, normal_experiment, _normal_label, normal_rows = by_label["Normal"]
+        sections = [
+            dicom_section(base_rows, normal_rows, task, title, args.model)
+            for task, title in TASKS
+        ]
+        out_path = os.path.join(args.out, "part1_norm_minus_original_{}.png".format(args.model))
+        load_part2_tables().draw_sections(
+            out_path,
+            "Part 1 normal minus original \u2014 {}".format(args.model),
+            "{} minus {}. \u0394 is the normal run minus the original run. Best focused score, CANDID-PTX.".format(
+                normal_experiment, base_experiment,
+            ),
+            "Epochs are original / normal.",
+            sections,
         )
         written.append(out_path)
 
