@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Student and teacher panels stacked, one figure per focused task.
+"""Student and teacher panels side by side, one figure per focused task.
 
-The top row is the student and the bottom row is the teacher. Columns are the
-other task types, as in plot_experiment_panels.py. The focused curve is a
-solid line. Each other dataset is a lighter dashed line of its own color.
-Those lines are this task's score on the cycles when that dataset was trained.
+Columns are the student and the teacher. Rows are the other task types, as in
+plot_experiment_panels.py. The focused curve is a solid line. Each other
+dataset is a lighter dashed line of its own color. Those lines are this task's
+score on the cycles when that dataset was trained.
 
 Figures are written to <experiment>/analysis/stacked/<task folder>/.
 """
@@ -81,27 +81,29 @@ def plot_focus(rows, focus, order, n_tasks, x_max, run, out_path):
     metric = curves.TASK_YLABEL[task_type]
     scores = [row["score"] for row in rows if row["tested"] == focus]
     limits = pairs.y_limits(scores)
+    n_rows = len(grouped)
+    fig_w, fig_h = 10.4, 3.5 * n_rows + 1.35
     fig, axes = plt.subplots(
-        2, len(grouped), figsize=(5.1 * len(grouped), 7.2), sharex=True, sharey=True, squeeze=False,
+        n_rows, len(MODELS), figsize=(fig_w, fig_h), sharex=True, sharey=True, squeeze=False,
     )
     color_of = {}
     seen_datasets = []
-    for col, (panel_type, others) in enumerate(grouped):
+    for row_index, (panel_type, others) in enumerate(grouped):
         for other in others:
             if other[1] not in seen_datasets:
                 seen_datasets.append(other[1])
-        for row_index, model in enumerate(MODELS):
-            ax = axes[row_index][col]
+        for col_index, model in enumerate(MODELS):
+            ax = axes[row_index][col_index]
             draw_model(ax, rows, focus, others, n_tasks, model, color_of)
             style_axis(
                 ax,
-                panels.PANEL_TITLE[panel_type],
-                "{} {}".format(model.title(), metric),
+                model.title(),
+                "{}\n{}".format(panels.PANEL_TITLE[panel_type], metric),
                 x_max,
                 limits,
                 show_title=(row_index == 0),
-                show_xlabel=(row_index == len(MODELS) - 1),
-                show_ylabel=(col == 0),
+                show_xlabel=(row_index == n_rows - 1),
+                show_ylabel=(col_index == 0),
             )
 
     legend = [
@@ -114,12 +116,13 @@ def plot_focus(rows, focus, order, n_tasks, x_max, run, out_path):
             linewidth=1.45, linestyle="--",
             label="After {}".format(panels.display_dataset(dataset)),
         ))
+    legend_band = 1.05 / fig_h
     fig.legend(
         handles=legend, loc="lower center", ncol=min(len(legend), 4),
-        frameon=False, fontsize=9, bbox_to_anchor=(0.5, 0.05),
+        frameon=False, fontsize=9, bbox_to_anchor=(0.5, legend_band * 0.62),
     )
     fig.text(
-        0.5, 0.005,
+        0.5, 0.012,
         "Highest focused student: {}    Highest focused teacher: {}".format(
             curves.best_text(panels.select_rows(rows, focus, focus, "student"), n_tasks),
             curves.best_text(panels.select_rows(rows, focus, focus, "teacher"), n_tasks),
@@ -127,8 +130,8 @@ def plot_focus(rows, focus, order, n_tasks, x_max, run, out_path):
         ha="center", va="bottom", fontsize=9,
     )
     run_title = panels.RUN_TITLE.get(run, run)
-    fig.suptitle("{} — {}".format(panels.display_focus(focus), run_title), fontsize=14, y=1.02)
-    fig.tight_layout(rect=(0, 0.16, 1, 0.96))
+    fig.suptitle("{} — {}".format(panels.display_focus(focus), run_title), fontsize=14, y=1.01)
+    fig.tight_layout(rect=(0, legend_band, 1, 0.96))
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
