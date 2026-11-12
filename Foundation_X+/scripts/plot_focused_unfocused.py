@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Plot focused and unfocused test curves for part 1 and part 2.
 
-Each figure is one evaluated dataset and task. The x-axis is the cycle.
-Solid blue and solid red are the student and teacher on cycles that trained
-that exact task. Dashed green and dashed orange connect every cycle for the
-student and teacher, so each dashed curve passes through its solid curve.
-The highest student and teacher scores are listed on the figure.
+Each figure is one evaluated dataset and task. Two stacked panels show
+student and teacher performance versus cycle. A solid line marks scores
+right after training on that task; a dotted line connects every evaluation,
+including focused points, so drawdowns after other datasets are visible.
+Colored dots on the dotted line mark which dataset and task (cls, loc, seg)
+was just trained. A horizontal dotted line on each panel marks the highest
+score for that model on the task, labeled with score, cycle, and epoch.
 
 Also writes best_epoch_metrics.csv. Student and teacher best scores are
 chosen separately. The primary score is classification AUC, localization
@@ -322,26 +324,98 @@ def plot_curve(ax, points, n_tasks, color, linestyle, label, marker=None, linewi
     ax.plot(xs, ys, **style)
 
 
-def plot_training_markers(ax, points, n_tasks, order):
-    """Mark each student point by the task that was just trained."""
-    marker_of = {task: TASK_MARKERS[index % len(TASK_MARKERS)] for index, task in enumerate(order)}
-    by_task = defaultdict(list)
+TASK_ABBR = {
+    "classification": "cls",
+    "localization": "loc",
+    "segmentation": "seg",
+}
+
+TRAINING_DOT_PALETTE = plt.cm.tab10
+
+
+def trained_dot_label(training):
+    task_type, dataset = training
+    return "{} {}".format(dataset, TASK_ABBR[task_type])
+
+
+def training_colors(order, points):
+    extras = sorted(
+        {row["training"] for row in points if row["training"] not in order},
+        key=task_label,
+    )
+    tasks = [task for task in order if any(row["training"] == task for row in points)]
+    tasks.extend(task for task in extras if task not in tasks)
+    return {task: TRAINING_DOT_PALETTE(index % 10) for index, task in enumerate(tasks)}, tasks
+
+
+def plot_training_dots(ax, points, n_tasks, order):
+    if not points:
+        return []
+    colors, legend_tasks = training_colors(order, points)
+    by_training = defaultdict(list)
     for row in points:
-        if row["model"] == "student":
-            by_task[row["training"]].append(row)
-    for task in order:
-        task_points = sorted(by_task.get(task, []), key=lambda row: row["epoch"])
+        by_training[row["training"]].append(row)
+    handles = []
+    for training in legend_tasks:
+        task_points = sorted(by_training.get(training, []), key=lambda row: row["epoch"])
         if not task_points:
             continue
-        ax.scatter(
+        scatter = ax.scatter(
             [cycle_x(row["epoch"], n_tasks) for row in task_points],
             [row["score"] for row in task_points],
-            marker=marker_of[task],
-            s=28,
-            color=STUDENT_DASHED,
-            label="Trained: {}".format(task_label(task)),
-            zorder=3,
+            s=24,
+            color=colors[training],
+            edgecolors="white",
+            linewidths=0.35,
+            label=trained_dot_label(training),
+            zorder=5,
         )
+        handles.append(scatter)
+    return handles
+
+
+def configure_cycle_axis(ax, x_max):
+    ax.set_xlim(1, x_max)
+    if x_max <= 16:
+        ax.xaxis.set_major_locator(MultipleLocator(1))
+    else:
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=10))
+    ax.grid(True, alpha=0.3)
+
+
+def plot_best_hline(ax, points, n_tasks, x_max):
+    best = best_score(points)
+    if best is None:
+        return
+    ax.axhline(best["score"], color="0.5", linestyle=":", linewidth=1.2, zorder=1)
+    label = "{:.3f}  cycle {}  epoch {}".format(
+        best["score"],
+        cycle_number(best["epoch"], n_tasks),
+        best["epoch"],
+    )
+    ax.text(
+        x_max - 0.02,
+        best["score"],
+        "  " + label,
+        fontsize=8,
+        va="bottom",
+        ha="right",
+        color="0.35",
+        clip_on=False,
+    )
+
+
+def plot_model_panel(ax, points, focused_points, n_tasks, x_max, order, solid_color, dotted_color, panel_title, ylabel, show_xlabel):
+    plot_curve(ax, points, n_tasks, dotted_color, ":", None, linewidth=1.5, zorder=2)
+    plot_curve(ax, focused_points, n_tasks, solid_color, "-", "After training this task", linewidth=2.2, zorder=4)
+    dot_handles = plot_training_dots(ax, points, n_tasks, order)
+    plot_best_hline(ax, points, n_tasks, x_max)
+    ax.set_title(panel_title, loc="left", fontsize=10)
+    ax.set_ylabel(ylabel)
+    configure_cycle_axis(ax, x_max)
+    if show_xlabel:
+        ax.set_xlabel("Cycle")
+    return dot_handles
 
 
 def plot_task(rows, tested, n_tasks, x_max, order, out_path):
@@ -355,31 +429,66 @@ def plot_task(rows, tested, n_tasks, x_max, order, out_path):
         if row["training"] == tested:
             focused[row["model"]].append(row)
 
-    fig, ax = plt.subplots(figsize=(10, 6.5))
-    plot_curve(ax, by_model["student"], n_tasks, STUDENT_UNFOCUSED, "--", "Student focused and unfocused", linewidth=1.4)
-    plot_curve(ax, by_model["teacher"], n_tasks, TEACHER_UNFOCUSED, "--", "Teacher focused and unfocused", linewidth=1.4)
-    plot_curve(ax, focused["student"], n_tasks, STUDENT_SOLID, "-", "Student focused")
-    plot_curve(ax, focused["teacher"], n_tasks, TEACHER_SOLID, "-", "Teacher focused")
-
     task_type, dataset = tested
-    ax.set_title("{} {}".format(dataset, task_type))
-    ax.set_xlabel("Cycle")
-    ax.set_ylabel(TASK_YLABEL[task_type])
-    ax.set_xlim(1, x_max)
-    if x_max <= 16:
-        ax.xaxis.set_major_locator(MultipleLocator(1))
-    else:
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=10))
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
-    note = textwrap.fill(order_note(tested, order), width=110)
-    highest = "Highest student: {}    Highest teacher: {}".format(
-        best_text(by_model["student"], n_tasks),
-        best_text(by_model["teacher"], n_tasks),
+    ylabel = TASK_YLABEL[task_type]
+    fig, (ax_student, ax_teacher) = plt.subplots(
+        2,
+        1,
+        figsize=(10, 8.5),
+        sharex=True,
+        sharey=True,
     )
-    fig.tight_layout(rect=(0, 0.10, 1, 1))
-    fig.text(0.01, 0.035, note, fontsize=8, va="bottom")
-    fig.text(0.01, 0.01, highest, fontsize=9, va="bottom")
+    fig.suptitle("{} {}".format(dataset, task_type), fontsize=12, y=0.98)
+    plot_model_panel(
+        ax_student,
+        by_model["student"],
+        focused["student"],
+        n_tasks,
+        x_max,
+        order,
+        STUDENT_SOLID,
+        STUDENT_UNFOCUSED,
+        "Student",
+        ylabel,
+        show_xlabel=False,
+    )
+    dot_handles = plot_model_panel(
+        ax_teacher,
+        by_model["teacher"],
+        focused["teacher"],
+        n_tasks,
+        x_max,
+        order,
+        TEACHER_SOLID,
+        TEACHER_UNFOCUSED,
+        "Teacher",
+        ylabel,
+        show_xlabel=True,
+    )
+    if not dot_handles:
+        dot_handles = plot_training_dots(ax_student, by_model["student"], n_tasks, order)
+
+    line_handles = [
+        plt.Line2D([0], [0], color=STUDENT_SOLID, linewidth=2.2, label="Student focused"),
+        plt.Line2D([0], [0], color=STUDENT_UNFOCUSED, linewidth=1.5, linestyle=":", label="Student all evaluations"),
+        plt.Line2D([0], [0], color=TEACHER_SOLID, linewidth=2.2, label="Teacher focused"),
+        plt.Line2D([0], [0], color=TEACHER_UNFOCUSED, linewidth=1.5, linestyle=":", label="Teacher all evaluations"),
+        plt.Line2D([0], [0], color="0.5", linewidth=1.2, linestyle=":", label="Best score"),
+    ]
+    legend_handles = line_handles + dot_handles
+    legend_labels = [handle.get_label() for handle in legend_handles]
+    note = textwrap.fill(order_note(tested, order), width=110)
+    fig.legend(
+        legend_handles,
+        legend_labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.01),
+        ncol=4,
+        frameon=False,
+        fontsize=7,
+    )
+    fig.tight_layout(rect=(0, 0.10, 1, 0.96))
+    fig.text(0.01, 0.04, note, fontsize=8, va="bottom")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
